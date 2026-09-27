@@ -3,6 +3,7 @@ import api from './axios';
 export const crearVenta = (data) => api.post('/ventas', data);
 export const obtenerVentas = (params) => api.get('/ventas', { params });
 export const obtenerEstadisticasVentas = (params) => api.get('/ventas/stats', { params });
+export const obtenerAnaliticaVentas = (params) => api.get('/ventas/analitica', { params });
 export const obtenerMasVendidos = (params) => api.get('/ventas/mas-vendidos', { params });
 export const eliminarVenta = (id) => api.delete(`/ventas/${id}`);
 export const abrirCaja = (data) => api.post('/ventas/caja/abrir', data);
