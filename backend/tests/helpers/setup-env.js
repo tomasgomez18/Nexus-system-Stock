@@ -1,4 +1,5 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'secreto-de-pruebas-con-mas-de-32-caracteres';
+process.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'nexus@code.com';
 process.env.VAPID_PUBLIC_KEY = '';
 process.env.VAPID_PRIVATE_KEY = '';
 process.env.BREVO_API_KEY = '';
