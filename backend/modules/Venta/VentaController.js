@@ -12,7 +12,7 @@ import { enviarEvento, enviarStockBajo } from '../../services/PushService.js';
 import { enSegundoPlano } from '../../utils/TareasUtils.js';
 import { parsearFecha, obtenerRango, inicioDeDia } from '../../utils/FechasUtils.js';
 import { indiceDeVariante, extraDeposito } from '../../utils/VariantesUtils.js';
-import { obtenerArticulos, unidadesNetasVenta, totalNetoVenta } from '../../utils/VentasUtils.js';
+import { obtenerArticulos, unidadesNetasVenta, totalNetoVenta, resumirPorMetodo, rankingEmpleados, rankingProductosPorUnidades, construirEje } from '../../utils/VentasUtils.js';
 import { filtroCierreDia, mensajeCierre, verificarOperacionNoEnCierre, MENSAJE_CIERRE_EN_CURSO } from '../../utils/CierresUtils.js';
 import { buscarCajaAbierta, respuestaSinCaja, MENSAJE_SIN_CAJA, cajaEsDeHoy, mensajeCajaAnterior } from '../../utils/CajaUtils.js';
 import logger from '../../utils/LoggerUtils.js';
@@ -954,31 +954,7 @@ export const obtenerEstadisticasVentas = async (req, res, next) => {
     const total = Math.round(sales.reduce((sum, s) => sum + totalNetoVenta(s), 0) * 100) / 100;
     const cantidad = sales.reduce((sum, s) => sum + unidadesNetasVenta(s), 0);
 
-    const porMetodo = sales.reduce((acc, s) => {
-      const unidadesNetas = unidadesNetasVenta(s);
-      if (unidadesNetas <= 0) return acc;
-      if (s.pagos && s.pagos.length > 0) {
-        const totalPagado = s.pagos.reduce((sum, p) => sum + p.monto, 0);
-        if (totalPagado <= 0) return acc;
-        let asignadas = 0;
-        for (let i = 0; i < s.pagos.length; i++) {
-          const p = s.pagos[i];
-          if (!acc[p.metodo]) acc[p.metodo] = { total: 0, cantidad: 0 };
-          acc[p.metodo].total += p.monto;
-          const parte = i === s.pagos.length - 1
-            ? unidadesNetas - asignadas
-            : Math.round(unidadesNetas * (p.monto / totalPagado));
-          acc[p.metodo].cantidad += parte;
-          asignadas += parte;
-        }
-      } else {
-        const m = s.metodoPago || 'efectivo';
-        if (!acc[m]) acc[m] = { total: 0, cantidad: 0 };
-        acc[m].total += s.total;
-        acc[m].cantidad += unidadesNetas;
-      }
-      return acc;
-    }, {});
+    const porMetodo = resumirPorMetodo(sales);
 
     res.json({
       total,
@@ -986,6 +962,52 @@ export const obtenerEstadisticasVentas = async (req, res, next) => {
       efectivo: porMetodo.efectivo || { total: 0, cantidad: 0 },
       transferencia: porMetodo.transferencia || { total: 0, cantidad: 0 },
       tarjeta: porMetodo.tarjeta || { total: 0, cantidad: 0 },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const obtenerAnaliticaVentas = async (req, res, next) => {
+  try {
+    const { desde, hasta, offset = 0 } = req.query;
+    const off = Number(offset) || 0;
+    const filter = {};
+
+    if (desde || hasta) {
+      filter.fechaCreacion = obtenerRango(desde, hasta, off);
+    }
+
+    const sales = await Venta.find(filter)
+      .populate('articulos.producto', 'nombre')
+      .populate('producto', 'nombre');
+
+    const empleados = rankingEmpleados(sales)
+      .slice(0, 5)
+      .map((fila, i) => ({ id: `emp_${i}`, ...fila }));
+
+    const productos = rankingProductosPorUnidades(sales, 5).map((fila, i) => ({
+      id: `prod_${i}`,
+      productoId: fila.productoId,
+      label: fila.nombre || 'Producto eliminado',
+      unidades: fila.unidades,
+    }));
+
+    const mapaEmpleados = new Map(empleados.map((fila) => [fila.empleado, fila.id]));
+    const mapaProductos = new Map(productos.map((fila) => [fila.productoId, fila.id]));
+
+    res.json({
+      resumen: {
+        total: redondear(sales.reduce((sum, s) => sum + totalNetoVenta(s), 0)),
+        cantidad: sales.reduce((sum, s) => sum + unidadesNetasVenta(s), 0),
+      },
+      ejes: {
+        dia: { clave: 'fecha', puntos: construirEje(sales, off, 'dia', mapaEmpleados, mapaProductos) },
+        semana: { clave: 'semana', puntos: construirEje(sales, off, 'semana', mapaEmpleados, mapaProductos) },
+        mes: { clave: 'mes', puntos: construirEje(sales, off, 'mes', mapaEmpleados, mapaProductos) },
+      },
+      empleados,
+      productos,
     });
   } catch (error) {
     next(error);
