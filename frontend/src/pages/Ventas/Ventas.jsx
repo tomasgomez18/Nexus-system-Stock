@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { obtenerVentas, obtenerEstadisticasVentas, obtenerMasVendidos, eliminarVenta, obtenerCierresCaja, eliminarCierreCaja, reenviarCorreoCierre } from '../../api/ventas';
 import { useApi } from '../../hooks/useApi';
@@ -18,6 +18,8 @@ import IosToggle from '../../components/ui/IosToggle';
 import IosSegmented from '../../components/ui/IosSegmented';
 import { IosField, IosInput } from '../../components/ui/IosForm';
 import { IconChevronRight, IconChart, IconCash, IconBank, IconCard, IconTile } from '../../components/ui/icons';
+
+const GraficosVentas = lazy(() => import('../../components/GraficosVentas/GraficosVentas'));
 
 const metodosIcon = {
   efectivo: IconCash,
@@ -394,6 +396,50 @@ const Ventas = () => {
     setHasta(p.hasta());
   };
 
+  const filtroFechas = (
+    <div className="bg-ios-surface border border-ios-separator/30 rounded-3xl p-5 mb-4 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <IosField label="Desde">
+          <IosInput
+            type="date"
+            value={desde}
+            onChange={(e) => {
+              setDesde(e.target.value);
+              setActivePeriodo('');
+            }}
+            className="w-full sm:w-auto"
+          />
+        </IosField>
+        <IosField label="Hasta">
+          <IosInput
+            type="date"
+            value={hasta}
+            onChange={(e) => {
+              setHasta(e.target.value);
+              setActivePeriodo('');
+            }}
+            className="w-full sm:w-auto"
+          />
+        </IosField>
+      </div>
+      <div className="flex gap-2">
+        {periodos.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => selectPeriodo(p)}
+            className={`flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
+              activePeriodo === p.key
+                ? 'bg-ios-tint text-white shadow-[0_3px_10px_rgba(10,132,255,0.3)]'
+                : 'bg-ios-surface2 text-ios-tertiary hover:text-ios-secondary'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (loading && activeTab === 'ventas' && !ticketModal && !returnSale && !withdrawalOpen) {
     return <LoadingSpinner />;
   }
@@ -408,7 +454,7 @@ const Ventas = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <IosSegmented
-          options={[{ value: 'ventas', label: 'Ventas' }, { value: 'cierres', label: 'Cierres' }]}
+          options={[{ value: 'ventas', label: 'Ventas' }, { value: 'graficos', label: 'Gráficos' }, { value: 'cierres', label: 'Cierres' }]}
           value={activeTab}
           onChange={setActiveTab}
           className="w-full sm:w-auto"
@@ -507,47 +553,7 @@ const Ventas = () => {
             })}
           </div>
 
-          <div className="bg-ios-surface border border-ios-separator/30 rounded-3xl p-5 mb-4 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <IosField label="Desde">
-                <IosInput
-                  type="date"
-                  value={desde}
-                  onChange={(e) => {
-                    setDesde(e.target.value);
-                    setActivePeriodo('');
-                  }}
-                  className="w-full sm:w-auto"
-                />
-              </IosField>
-              <IosField label="Hasta">
-                <IosInput
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => {
-                    setHasta(e.target.value);
-                    setActivePeriodo('');
-                  }}
-                  className="w-full sm:w-auto"
-                />
-              </IosField>
-            </div>
-            <div className="flex gap-2">
-              {periodos.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => selectPeriodo(p)}
-                  className={`flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
-                    activePeriodo === p.key
-                      ? 'bg-ios-tint text-white shadow-[0_3px_10px_rgba(10,132,255,0.3)]'
-                      : 'bg-ios-surface2 text-ios-tertiary hover:text-ios-secondary'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {filtroFechas}
 
           <div className="bg-ios-surface border border-ios-separator/30 rounded-3xl p-5 mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-ios-secondary text-sm font-medium">
@@ -848,6 +854,13 @@ const Ventas = () => {
               })
             )}
           </div>
+        </>
+      ) : activeTab === 'graficos' ? (
+        <>
+          {filtroFechas}
+          <Suspense fallback={<LoadingSpinner />}>
+            <GraficosVentas desde={desde} hasta={hasta} />
+          </Suspense>
         </>
       ) : (
         <>

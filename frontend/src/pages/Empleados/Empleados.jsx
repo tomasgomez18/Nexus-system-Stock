@@ -89,8 +89,18 @@ const Empleados = () => {
       const ok = await confirmar({
         icon: 'warning',
         title: '¿Convertir en administrador?',
-        message: 'Un administrador no se puede volver a degradar, desactivar ni eliminar desde la app.',
+        message: 'Va a poder gestionar empleados, productos, ventas y cierres. Solo la cuenta principal queda protegida.',
         confirmText: 'Convertir',
+      });
+      if (!ok) return;
+    }
+    if (editando && editando.rol === 'admin' && form.rol !== 'admin') {
+      const ok = await confirmar({
+        icon: 'warning',
+        title: '¿Quitar permisos de administrador?',
+        message: 'Va a dejar de acceder a Empleados y a las funciones de administrador.',
+        confirmText: 'Quitar admin',
+        destructive: true,
       });
       if (!ok) return;
     }
@@ -342,7 +352,7 @@ const Empleados = () => {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex justify-end gap-3 flex-wrap">
-                        {emp.rol === 'admin' ? (
+                        {emp.protegido ? (
                           <>
                             {esMismo(emp) && (
                               <button
@@ -368,18 +378,22 @@ const Empleados = () => {
                             >
                               Reiniciar clave
                             </button>
-                            <button
-                              onClick={() => handleCambiarActivo(emp)}
-                              className="text-ios-secondary hover:text-ios-label font-medium text-sm"
-                            >
-                              {emp.activo ? 'Desactivar' : 'Activar'}
-                            </button>
-                            <button
-                              onClick={() => handleEliminar(emp)}
-                              className="text-ios-red hover:text-ios-red/80 font-medium text-sm"
-                            >
-                              Eliminar
-                            </button>
+                            {!esMismo(emp) && (
+                              <>
+                                <button
+                                  onClick={() => handleCambiarActivo(emp)}
+                                  className="text-ios-secondary hover:text-ios-label font-medium text-sm"
+                                >
+                                  {emp.activo ? 'Desactivar' : 'Activar'}
+                                </button>
+                                <button
+                                  onClick={() => handleEliminar(emp)}
+                                  className="text-ios-red hover:text-ios-red/80 font-medium text-sm"
+                                >
+                                  Eliminar
+                                </button>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
@@ -418,20 +432,18 @@ const Empleados = () => {
                 <div className="mt-3 pt-3 border-t border-ios-separator/40 space-y-1.5 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-ios-tertiary text-xs">Rol</span>
-                    {emp.rol === 'admin' ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span className="text-ios-secondary">Administrador</span>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="text-ios-secondary">{emp.rol === 'admin' ? 'Administrador' : 'Empleado'}</span>
+                      {emp.protegido && (
                         <span className="text-[11px] px-2 py-0.5 rounded-ios-pill bg-ios-tint/10 text-ios-tint font-semibold">
                           Protegido
                         </span>
-                      </span>
-                    ) : (
-                      <span className="text-ios-secondary">Empleado</span>
-                    )}
+                      )}
+                    </span>
                   </div>
                 </div>
                 <div className="mt-3 pt-3 border-t border-ios-separator/40 flex flex-wrap gap-2">
-                  {emp.rol === 'admin' ? (
+                  {emp.protegido ? (
                     <>
                       {esMismo(emp) && (
                         <button
@@ -457,18 +469,22 @@ const Empleados = () => {
                       >
                         Reiniciar clave
                       </button>
-                      <button
-                        onClick={() => handleCambiarActivo(emp)}
-                        className="text-ios-secondary text-xs border border-ios-separator/50 px-2.5 py-1 rounded-ios-pill hover:bg-ios-hover/[0.05] transition-all font-semibold"
-                      >
-                        {emp.activo ? 'Desactivar' : 'Activar'}
-                      </button>
-                      <button
-                        onClick={() => handleEliminar(emp)}
-                        className="text-ios-red text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold"
-                      >
-                        Eliminar
-                      </button>
+                      {!esMismo(emp) && (
+                        <>
+                          <button
+                            onClick={() => handleCambiarActivo(emp)}
+                            className="text-ios-secondary text-xs border border-ios-separator/50 px-2.5 py-1 rounded-ios-pill hover:bg-ios-hover/[0.05] transition-all font-semibold"
+                          >
+                            {emp.activo ? 'Desactivar' : 'Activar'}
+                          </button>
+                          <button
+                            onClick={() => handleEliminar(emp)}
+                            className="text-ios-red text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold"
+                          >
+                            Eliminar
+                          </button>
+                        </>
+                      )}
                     </>
                   )}
                 </div>

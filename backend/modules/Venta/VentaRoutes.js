@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { crearVenta, eliminarVenta, obtenerVentas, obtenerEstadisticasVentas, obtenerMasVendidos, abrirCaja, obtenerCajaAbierta, cerrarCaja, reabrirCaja, obtenerCierresCaja, eliminarCierreCaja, reenviarMailCierre, probarCorreo, estadoCorreo, ejecutarMigracion, migrarTickets } from './VentaController.js';
+import { crearVenta, eliminarVenta, obtenerVentas, obtenerEstadisticasVentas, obtenerAnaliticaVentas, obtenerMasVendidos, abrirCaja, obtenerCajaAbierta, cerrarCaja, reabrirCaja, obtenerCierresCaja, eliminarCierreCaja, reenviarMailCierre, probarCorreo, estadoCorreo, ejecutarMigracion, migrarTickets } from './VentaController.js';
 import { proteger, admin } from '../../middlewares/AutenticacionMiddleware.js';
 
 const router = Router();
@@ -14,6 +14,7 @@ router.get('/cierres-caja', obtenerCierresCaja);
 router.delete('/cierres-caja/:id', admin, eliminarCierreCaja);
 router.post('/cierres-caja/:id/reenviar-mail', admin, reenviarMailCierre);
 router.get('/stats', obtenerEstadisticasVentas);
+router.get('/analitica', obtenerAnaliticaVentas);
 router.get('/mas-vendidos', obtenerMasVendidos);
 router.get('/', obtenerVentas);
 if (process.env.NODE_ENV !== 'production') {
