@@ -25,11 +25,17 @@ const ResumenCaja = ({ resumen }) => (
     <FilaResumen label="Efectivo" valor={formatMoney(resumen.efectivo?.total || 0)} cls="text-green-400" />
     <FilaResumen label="Transferencia" valor={formatMoney(resumen.transferencia?.total || 0)} cls="text-blue-400" />
     <FilaResumen label="Tarjeta" valor={formatMoney(resumen.tarjeta?.total || 0)} cls="text-purple-400" />
+    {Number(resumen.cuentaCorriente?.total) > 0 && (
+      <FilaResumen label="Cuenta corriente" valor={formatMoney(resumen.cuentaCorriente?.total || 0)} cls="text-orange-400" />
+    )}
     {Number(resumen.totalDevoluciones) > 0 && (
       <FilaResumen label="Devoluciones" valor={`-${formatMoney(resumen.totalDevoluciones)}`} cls="text-ios-red" />
     )}
     {Number(resumen.totalRetiros) > 0 && (
       <FilaResumen label="Retiros" valor={`-${formatMoney(resumen.totalRetiros)}`} cls="text-ios-red" />
+    )}
+    {Number(resumen.totalCobrosCuentaCorriente) > 0 && (
+      <FilaResumen label="Cobros cuenta corriente" valor={formatMoney(resumen.totalCobrosCuentaCorriente || 0)} cls="text-green-400" />
     )}
     <FilaResumen label="Efectivo esperado" valor={formatMoney(resumen.efectivoEsperado || 0)} />
   </div>
@@ -161,11 +167,17 @@ export const CajaProvider = ({ children }) => {
               <FilaResumen label="Efectivo" valor={formatMoney(d.efectivo?.total || 0)} cls="text-green-400" />
               <FilaResumen label="Transferencia" valor={formatMoney(d.transferencia?.total || 0)} cls="text-blue-400" />
               <FilaResumen label="Tarjeta" valor={formatMoney(d.tarjeta?.total || 0)} cls="text-purple-400" />
+              {Number(d.cuentaCorriente?.total) > 0 && (
+                <FilaResumen label="Cuenta corriente" valor={formatMoney(d.cuentaCorriente?.total || 0)} cls="text-orange-400" />
+              )}
               {Number(d.totalDevoluciones) > 0 && (
                 <FilaResumen label="Devoluciones" valor={`-${formatMoney(d.totalDevoluciones)}`} cls="text-ios-red" />
               )}
               {Number(d.totalRetiros) > 0 && (
                 <FilaResumen label="Retiros" valor={`-${formatMoney(d.totalRetiros)}`} cls="text-ios-red" />
+              )}
+              {Number(d.totalCobrosCuentaCorriente) > 0 && (
+                <FilaResumen label="Cobros cuenta corriente" valor={formatMoney(d.totalCobrosCuentaCorriente || 0)} cls="text-green-400" />
               )}
               <FilaResumen label="Efectivo esperado" valor={formatMoney(d.efectivoEsperado || 0)} />
             </div>

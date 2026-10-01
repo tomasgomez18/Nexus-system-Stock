@@ -6,6 +6,7 @@ import AvisoNuevaNotificacion from '../alerts/AvisoNuevaNotificacion';
 import PanelCarrito from '../Carrito/PanelCarrito';
 import { IconCart } from '../ui/icons';
 import { NotificacionProvider } from '../../context/NotificacionContext';
+import { SolicitudClienteProvider } from '../../context/SolicitudClienteContext';
 import { CajaProvider } from '../../context/CajaContext';
 import { CarritoProvider } from '../../context/CarritoContext';
 import { useCarrito } from '../../context/carritoContexto';
@@ -58,11 +59,13 @@ const LayoutInner = () => {
 
 const Layout = () => (
   <NotificacionProvider>
-    <CajaProvider>
-      <CarritoProvider>
-        <LayoutInner />
-      </CarritoProvider>
-    </CajaProvider>
+    <SolicitudClienteProvider>
+      <CajaProvider>
+        <CarritoProvider>
+          <LayoutInner />
+        </CarritoProvider>
+      </CajaProvider>
+    </SolicitudClienteProvider>
   </NotificacionProvider>
 );
 

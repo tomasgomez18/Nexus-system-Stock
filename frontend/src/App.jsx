@@ -9,6 +9,7 @@ import Proveedores from './pages/Proveedores/Proveedores'
 import Devoluciones from './pages/Devoluciones/Devoluciones'
 import Ventas from './pages/Ventas/Ventas'
 import Tickets from './pages/Tickets/Tickets'
+import Clientes from './pages/Clientes/Clientes'
 import Notificaciones from './pages/Notificaciones/Notificaciones'
 import Empleados from './pages/Empleados/Empleados'
 import LoadingSpinner from './components/common/LoadingSpinner'
@@ -68,6 +69,7 @@ function App() {
           <Route path="deposito" element={<Deposito />} />
           <Route path="ventas" element={<Ventas />} />
           <Route path="tickets" element={<Tickets />} />
+          <Route path="clientes" element={<Clientes />} />
           <Route path="proveedores" element={<ProtectedRoute soloAdmin><Proveedores /></ProtectedRoute>} />
           <Route path="devoluciones" element={<Devoluciones />} />
           <Route path="notificaciones" element={<Notificaciones />} />
