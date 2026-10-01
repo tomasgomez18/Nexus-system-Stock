@@ -1,5 +1,6 @@
 import { printHtml } from './printHtml';
 import { formatMoney } from './format';
+import { precioVigente } from './precios';
 
 const escapeHtml = (str) =>
   String(str ?? '').replace(/[&<>"']/g, (c) => ({
@@ -65,7 +66,7 @@ export const printLabel = async (producto, opciones = {}) => {
 
   const etiquetaHtml = `<div class="etiqueta${modo === 'hoja' && guias ? ' guia' : ''}">
     <p class="nombre">${escapeHtml(producto.nombre || '')}</p>
-    ${mostrarPrecio && producto.precio ? `<p class="precio">${formatMoney(producto.precio)}</p>` : ''}
+    ${mostrarPrecio && producto.precio ? `<p class="precio">${formatMoney(precioVigente(producto))}</p>` : ''}
     ${qrDataUrl ? `<img class="qr" src="${qrDataUrl}" alt="QR" />` : ''}
     ${barcodeDataUrl ? `<img class="barras" src="${barcodeDataUrl}" alt="Código de barras" />` : ''}
     <p class="codigo">${escapeHtml(codigo)}</p>

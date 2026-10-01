@@ -10,6 +10,7 @@ import {
 import { obtenerVentas as obtenerTickets } from '../../api/ventas';
 import { obtenerMensajeErrorApi } from '../../utils/apiError';
 import { formatMoney, formatDate } from '../../utils/format';
+import { precioVigente, tieneOferta, etiquetaOferta } from '../../utils/precios';
 import { LIMITE_PRODUCTOS, depositoTotal, variantShortLabel, tieneStockBajo, soloEnDeposito, paramsProductos } from '../../utils/productos';
 import { useApi } from '../../hooks/useApi';
 import { useCategorias } from '../../hooks/useCategorias';
@@ -19,6 +20,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ScannerButton from '../../components/scanner/ScannerButton';
 import ScannerModal from '../../components/scanner/ScannerModal';
 import FormularioDevolucion from '../../components/FormularioDevolucion/FormularioDevolucion';
+import PlanCuentaCorriente from '../../components/Carrito/PlanCuentaCorriente';
 import FiltroCategorias from '../../components/FiltroCategorias/FiltroCategorias';
 import { useAutenticacion } from '../../context/autenticacionContexto';
 import { useLector } from '../../context/lectorContexto';
@@ -201,7 +203,8 @@ const Productos = () => {
     addItem({
       producto: quickAdd._id,
       nombre: quickAdd.nombre,
-      precio: quickAdd.precio,
+      precio: precioVigente(quickAdd),
+      precioOriginal: tieneOferta(quickAdd) ? Number(quickAdd.precio) : undefined,
       cantidad,
       talle,
       color,
@@ -306,7 +309,8 @@ const Productos = () => {
     addItem({
       producto: producto._id,
       nombre: producto.nombre,
-      precio: producto.precio,
+      precio: precioVigente(producto),
+      precioOriginal: tieneOferta(producto) ? Number(producto.precio) : undefined,
       cantidad: 1,
       talle: '',
       color: '',
@@ -378,7 +382,7 @@ const Productos = () => {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <h1 className="text-[28px] font-bold text-ios-label tracking-tight">Productos</h1>
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
           <IosButton variant="tinted" onClick={openCart} className="md:hidden flex-1 sm:flex-none relative">
             <IconCart className="w-[18px] h-[18px]" />
             Carrito
@@ -532,7 +536,17 @@ const Productos = () => {
           </IosField>
           <IosField label="Precio unitario">
             <div className="px-3.5 py-2.5 bg-ios-surface2 rounded-ios-control text-ios-label text-sm font-medium">
-              {formatMoney(quickAdd?.precio)}
+              {tieneOferta(quickAdd) ? (
+                <>
+                  <span className="text-ios-tertiary line-through mr-1.5">{formatMoney(quickAdd?.precio)}</span>
+                  <span className="text-ios-orange font-semibold">{formatMoney(precioVigente(quickAdd))}</span>
+                  <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-ios-orange/15 text-ios-orange">
+                    {etiquetaOferta(quickAdd.oferta)}
+                  </span>
+                </>
+              ) : (
+                formatMoney(quickAdd?.precio)
+              )}
             </div>
           </IosField>
           {renderVariantSelect(quickAdd?.variantes, qaVariantIdx, setQaVariantIdx)}
@@ -636,6 +650,9 @@ const Productos = () => {
                 />
                 <span className="text-ios-tertiary">×</span>
                 <span className="w-24 px-2 py-1.5 text-right text-ios-label text-sm font-medium">
+                  {item.precioOriginal ? (
+                    <span className="text-ios-tertiary line-through mr-1 text-xs">{formatMoney(item.precioOriginal)}</span>
+                  ) : null}
                   {formatMoney(item.precio)}
                 </span>
                 <span className="text-ios-tertiary text-xs font-medium w-20 text-right">
@@ -674,12 +691,12 @@ const Productos = () => {
 
           <div className="bg-ios-surface rounded-2xl border border-ios-separator/30 p-4 space-y-3">
             <p className="text-[13px] text-ios-secondary font-medium">Pago</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {metodos.map((m) => (
                 <button
                   key={m.key} type="button"
                   onClick={() => setMetodoPago(m.key)}
-                  className={`flex-1 px-3 py-2 text-sm rounded-ios-control border transition-all ios-btn-press font-medium ${
+                  className={`px-3 py-2 text-sm rounded-ios-control border transition-all ios-btn-press font-medium ${
                     sellMetodoPago === m.key
                       ? m.activeCls
                       : 'bg-ios-surface2 text-ios-tertiary border-transparent hover:bg-ios-surface3'
@@ -723,6 +740,7 @@ const Productos = () => {
                 </div>
               </div>
             )}
+            <PlanCuentaCorriente />
           </div>
         </div>
 
@@ -956,8 +974,21 @@ const Productos = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3.5 text-ios-secondary">
-                      {p.precio != null ? formatMoney(p.precio) : '—'}
+                    <td className="px-4 py-3.5">
+                      {p.precio == null ? (
+                        '—'
+                      ) : tieneOferta(p) ? (
+                        <div className="leading-tight">
+                          <span className="block text-[11px] text-ios-tertiary line-through">{formatMoney(p.precio)}</span>
+                          <span className="text-ios-orange font-semibold">{formatMoney(precioVigente(p))}</span>
+                          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-ios-orange/15 text-ios-orange">
+                            {etiquetaOferta(p.oferta)}
+                          </span>
+                          <span className="block text-[10px] text-ios-tertiary mt-0.5">Hasta {formatDate(p.oferta.hasta)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-ios-secondary">{formatMoney(p.precio)}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1056,7 +1087,19 @@ const Productos = () => {
                   className="w-full flex items-center justify-between mt-3 text-left"
                 >
                   <span className="text-ios-secondary font-medium">
-                    {p.precio != null ? formatMoney(p.precio) : '—'}
+                    {p.precio == null ? (
+                      '—'
+                    ) : tieneOferta(p) ? (
+                      <>
+                        <span className="text-ios-tertiary line-through mr-1.5">{formatMoney(p.precio)}</span>
+                        <span className="text-ios-orange font-semibold">{formatMoney(precioVigente(p))}</span>
+                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-ios-orange/15 text-ios-orange">
+                          {etiquetaOferta(p.oferta)}
+                        </span>
+                      </>
+                    ) : (
+                      formatMoney(p.precio)
+                    )}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs text-ios-tertiary">
                     {p.colores?.length > 0
@@ -1150,6 +1193,7 @@ const Productos = () => {
           </div>
         </>
       )}
+
     </div>
   );
 };

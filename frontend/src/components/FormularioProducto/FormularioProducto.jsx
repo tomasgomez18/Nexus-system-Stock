@@ -199,6 +199,14 @@ const FormularioProducto = ({ initial, onSubmit, onCancel, isSubmitting: externa
             className={campoCls('precio')}
           />
           {errText('precio')}
+          {initial?.oferta && (
+            <p className="text-ios-orange text-[11px] mt-1">
+              Tiene una oferta activa (
+              {initial.oferta.tipo === 'porcentaje' ? `-${initial.oferta.valor}%` : `-$${initial.oferta.valor}`}) hasta el{' '}
+              {new Date(initial.oferta.hasta).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.
+              El precio de oferta se calcula sobre este precio normal.
+            </p>
+          )}
         </div>
         <div>
           <label className={labelCls}>Stock Mínimo</label>
