@@ -2,17 +2,28 @@ import mongoose from 'mongoose';
 import Venta from './VentaModel.js';
 import Producto from '../Producto/ProductoModel.js';
 import Devolucion from '../Devolucion/DevolucionModel.js';
+import Cliente from '../Cliente/ClienteModel.js';
 import CierreCaja from './CierreCajaModel.js';
 import RetiroCaja from '../RetiroCaja/RetiroCajaModel.js';
 import RetiroCajaDia from '../RetiroCaja/RetiroCajaDiaModel.js';
 import { schemaCrearVenta, schemaAbrirCaja, schemaCerrarCaja, schemaReabrirCaja } from './VentaSchema.js';
 import { generarTicketNumero, guardarConTicketUnico } from './TicketUtils.js';
+import { montoEnCuentaCorriente, registrarDebitoDeVenta, cobrosDeCuentaCorriente } from '../MovimientoCuentaCorriente/CuentaCorrienteService.js';
+import {
+  resolverPlanDeVenta,
+  crearPlanDeVenta,
+  cancelarCuotasDeVenta,
+  anularCargosDeVenta,
+  recalcularImputacionesCliente,
+} from '../CuotaCuentaCorriente/CuotasService.js';
 import { enviarCierreDeCaja, enviarCorreoPrueba, verificarCorreo } from '../../services/CorreoService.js';
 import { enviarEvento, enviarStockBajo } from '../../services/PushService.js';
 import { enSegundoPlano } from '../../utils/TareasUtils.js';
 import { parsearFecha, obtenerRango, inicioDeDia } from '../../utils/FechasUtils.js';
 import { indiceDeVariante, extraDeposito } from '../../utils/VariantesUtils.js';
 import { obtenerArticulos, unidadesNetasVenta, totalNetoVenta, resumirPorMetodo, rankingEmpleados, rankingProductosPorUnidades, construirEje } from '../../utils/VentasUtils.js';
+import { promocionesVigentes } from '../Promocion/PromocionService.js';
+import { precioVigentePesos } from '../../utils/PreciosUtils.js';
 import { filtroCierreDia, mensajeCierre, verificarOperacionNoEnCierre, MENSAJE_CIERRE_EN_CURSO } from '../../utils/CierresUtils.js';
 import { buscarCajaAbierta, respuestaSinCaja, MENSAJE_SIN_CAJA, cajaEsDeHoy, mensajeCajaAnterior } from '../../utils/CajaUtils.js';
 import logger from '../../utils/LoggerUtils.js';
@@ -42,6 +53,7 @@ export const crearVenta = async (req, res, next) => {
     const idsProductos = data.articulos.map((item) => item.producto);
     const productos = await Producto.find({ _id: { $in: idsProductos } }).session(session);
     const productosPorId = new Map(productos.map((p) => [p._id.toString(), p]));
+    const promociones = await promocionesVigentes();
 
     for (const item of data.articulos) {
       const product = productosPorId.get(String(item.producto));
@@ -77,7 +89,7 @@ export const crearVenta = async (req, res, next) => {
 
       await product.save({ session });
 
-      const precioUnitario = Math.round(product.precio * 100) / 100;
+      const precioUnitario = Math.round(precioVigentePesos(product, promociones) * 100) / 100;
       articulos.push({
         producto: item.producto,
         cantidad: item.cantidad,
@@ -99,15 +111,51 @@ export const crearVenta = async (req, res, next) => {
       });
     }
 
+    const totalEnCuentaCorriente = montoEnCuentaCorriente(data.pagos);
+    let cliente = null;
+    let plan = null;
+    if (totalEnCuentaCorriente > 0) {
+      if (!data.cliente) {
+        await session.abortTransaction();
+        return res.status(400).json({ message: 'Para cargar a la cuenta corriente indicá el cliente' });
+      }
+      cliente = await Cliente.findById(data.cliente).session(session);
+      if (!cliente) {
+        await session.abortTransaction();
+        return res.status(404).json({ message: 'Cliente no encontrado' });
+      }
+      plan = await resolverPlanDeVenta(data.planCuotas, { offset: Number(data.offset) || 0 });
+    }
+
     const venta = await Venta.create([{
       articulos,
       total,
       empleado: req.usuario.nombre,
       pagos: data.pagos,
       descuento: data.descuento || 0,
+      cliente: cliente ? cliente._id : undefined,
+      clienteNombre: cliente ? cliente.nombre : '',
     }], { session });
 
     const savedSale = await guardarConTicketUnico(venta[0], session);
+
+    if (cliente) {
+      await registrarDebitoDeVenta(session, {
+        cliente,
+        clienteNombre: cliente.nombre,
+        monto: totalEnCuentaCorriente,
+        venta: savedSale,
+        usuario: req.usuario,
+      });
+      await crearPlanDeVenta(session, {
+        cliente,
+        clienteNombre: cliente.nombre,
+        venta: savedSale,
+        montoBase: totalEnCuentaCorriente,
+        plan,
+        usuario: req.usuario,
+      });
+    }
 
     const populated = await Venta.findById(savedSale._id)
       .session(session)
@@ -191,6 +239,12 @@ export const eliminarVenta = async (req, res, next) => {
 
     for (const product of modificados.values()) {
       await product.save({ session });
+    }
+
+    if (venta.cliente) {
+      await cancelarCuotasDeVenta(session, venta, req.usuario, 'Venta eliminada');
+      await anularCargosDeVenta(session, venta._id, req.usuario, 'Venta eliminada');
+      await recalcularImputacionesCliente(session, venta.cliente);
     }
 
     await Venta.findByIdAndDelete(req.params.id).session(session);
@@ -329,6 +383,8 @@ const calcularResumenCaja = async (caja) => {
   const totalDevoluciones = Math.round(devoluciones.reduce((sum, r) => sum + (r.montoDevuelto || 0), 0) * 100) / 100;
   const efectivoDevuelto = Math.round(devoluciones.reduce((sum, r) => sum + (r.efectivoDevuelto || 0), 0) * 100) / 100;
 
+  const cobros = await cobrosDeCuentaCorriente(desde, hasta);
+
   const total = Math.round(sales.reduce((sum, s) => sum + totalNetoVenta(s), 0) * 100) / 100;
   const cantidad = sales.reduce((sum, s) => sum + unidadesNetasVenta(s), 0);
 
@@ -359,9 +415,10 @@ const calcularResumenCaja = async (caja) => {
   }, {});
 
   const fondo = caja.fondoInicial || 0;
+  // Vender a cuenta corriente no suma efectivo, pero cobrarle despues si: ahi entra a la gaveta.
   const efectivoEsperado = Math.max(
     0,
-    Math.round((fondo + (porMetodo.efectivo?.total || 0) - totalRetiros - efectivoDevuelto) * 100) / 100
+    Math.round((fondo + (porMetodo.efectivo?.total || 0) - totalRetiros - efectivoDevuelto + cobros.efectivo) * 100) / 100
   );
 
   return {
@@ -372,6 +429,7 @@ const calcularResumenCaja = async (caja) => {
     totalRetiros,
     totalDevoluciones,
     efectivoDevuelto,
+    cobros,
     total,
     cantidad,
     porMetodo,
@@ -387,6 +445,12 @@ const resumenParaRespuesta = (resumen) => ({
   efectivo: { total: resumen.porMetodo.efectivo?.total || 0, cantidad: resumen.porMetodo.efectivo?.cantidad || 0 },
   transferencia: { total: resumen.porMetodo.transferencia?.total || 0, cantidad: resumen.porMetodo.transferencia?.cantidad || 0 },
   tarjeta: { total: resumen.porMetodo.tarjeta?.total || 0, cantidad: resumen.porMetodo.tarjeta?.cantidad || 0 },
+  cuentaCorriente: {
+    total: resumen.porMetodo.cuentaCorriente?.total || 0,
+    cantidad: resumen.porMetodo.cuentaCorriente?.cantidad || 0,
+  },
+  totalCobrosCuentaCorriente: resumen.cobros?.total || 0,
+  cobrosEfectivo: resumen.cobros?.efectivo || 0,
   totalRetiros: resumen.totalRetiros,
   totalDevoluciones: resumen.totalDevoluciones,
   efectivoDevuelto: resumen.efectivoDevuelto,
@@ -520,6 +584,12 @@ export const cerrarCaja = async (req, res, next) => {
             total: resumen.porMetodo.tarjeta?.total || 0,
             cantidad: resumen.porMetodo.tarjeta?.cantidad || 0,
           },
+          cuentaCorriente: {
+            total: resumen.porMetodo.cuentaCorriente?.total || 0,
+            cantidad: resumen.porMetodo.cuentaCorriente?.cantidad || 0,
+          },
+          totalCobrosCuentaCorriente: resumen.cobros?.total || 0,
+          cobrosEfectivo: resumen.cobros?.efectivo || 0,
           retiros: resumen.retiros.map((r) => ({
             monto: r.monto,
             motivo: r.motivo,
@@ -645,6 +715,9 @@ export const obtenerCierresCaja = async (req, res, next) => {
             efectivo: { total: 0, cantidad: 0 },
             transferencia: { total: 0, cantidad: 0 },
             tarjeta: { total: 0, cantidad: 0 },
+            cuentaCorriente: { total: 0, cantidad: 0 },
+            totalCobrosCuentaCorriente: 0,
+            cobrosEfectivo: 0,
             cerradaEn: new Date(0),
             turnos: [],
           });
@@ -661,6 +734,10 @@ export const obtenerCierresCaja = async (req, res, next) => {
         g.transferencia.cantidad += c.transferencia?.cantidad || 0;
         g.tarjeta.total += c.tarjeta?.total || 0;
         g.tarjeta.cantidad += c.tarjeta?.cantidad || 0;
+        g.cuentaCorriente.total += c.cuentaCorriente?.total || 0;
+        g.cuentaCorriente.cantidad += c.cuentaCorriente?.cantidad || 0;
+        g.totalCobrosCuentaCorriente += c.totalCobrosCuentaCorriente || 0;
+        g.cobrosEfectivo += c.cobrosEfectivo || 0;
         if (c.cerradaEn > g.cerradaEn) g.cerradaEn = c.cerradaEn;
         g.turnos.push(c);
       }
@@ -673,6 +750,9 @@ export const obtenerCierresCaja = async (req, res, next) => {
         efectivo: { ...g.efectivo, total: redondear(g.efectivo.total) },
         transferencia: { ...g.transferencia, total: redondear(g.transferencia.total) },
         tarjeta: { ...g.tarjeta, total: redondear(g.tarjeta.total) },
+        cuentaCorriente: { ...g.cuentaCorriente, total: redondear(g.cuentaCorriente.total) },
+        totalCobrosCuentaCorriente: redondear(g.totalCobrosCuentaCorriente),
+        cobrosEfectivo: redondear(g.cobrosEfectivo),
       }));
       return res.json(agrupados);
     }
@@ -779,6 +859,14 @@ export const reenviarMailCierre = async (req, res, next) => {
             total: mananaClose.tarjeta.total + close.tarjeta.total,
             cantidad: mananaClose.tarjeta.cantidad + close.tarjeta.cantidad,
           },
+          cuentaCorriente: {
+            total: (mananaClose.cuentaCorriente?.total || 0) + (close.cuentaCorriente?.total || 0),
+            cantidad: (mananaClose.cuentaCorriente?.cantidad || 0) + (close.cuentaCorriente?.cantidad || 0),
+          },
+          totalCobrosCuentaCorriente:
+            Math.round(((mananaClose.totalCobrosCuentaCorriente || 0) + (close.totalCobrosCuentaCorriente || 0)) * 100) / 100,
+          cobrosEfectivo:
+            Math.round(((mananaClose.cobrosEfectivo || 0) + (close.cobrosEfectivo || 0)) * 100) / 100,
         };
       }
     }
@@ -962,6 +1050,7 @@ export const obtenerEstadisticasVentas = async (req, res, next) => {
       efectivo: porMetodo.efectivo || { total: 0, cantidad: 0 },
       transferencia: porMetodo.transferencia || { total: 0, cantidad: 0 },
       tarjeta: porMetodo.tarjeta || { total: 0, cantidad: 0 },
+      cuentaCorriente: porMetodo.cuentaCorriente || { total: 0, cantidad: 0 },
     });
   } catch (error) {
     next(error);
