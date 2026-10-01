@@ -94,7 +94,7 @@ const IosModal = ({
             aria-label={title || 'Diálogo'}
             tabIndex={-1}
             onKeyDown={atraparFoco}
-            className="w-full bg-ios-surface/95 backdrop-blur-2xl shadow-ios-sheet rounded-t-[28px] overflow-hidden max-h-[92dvh] flex flex-col animate-ios-sheet-up focus:outline-none"
+            className="w-full bg-ios-surface/95 backdrop-blur-2xl shadow-ios-sheet rounded-t-[28px] overflow-hidden max-h-[92vh] supports-[max-height:92dvh]:max-h-[92dvh] flex flex-col animate-ios-sheet-up focus:outline-none"
           >
             <div className="flex justify-center pt-2.5 pb-1 shrink-0">
               <div className="w-9 h-[5px] rounded-full bg-ios-surface3" />
