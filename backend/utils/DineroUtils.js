@@ -12,3 +12,5 @@ export const campoCentavosPositivo = {
   ...campoCentavos,
   min: 0,
 };
+
+export const redondearMonto = (valor) => Math.round((Number(valor) || 0) * 100) / 100;
