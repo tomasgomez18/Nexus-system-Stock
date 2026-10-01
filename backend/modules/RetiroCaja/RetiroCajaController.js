@@ -3,6 +3,7 @@ import RetiroCaja from './RetiroCajaModel.js';
 import RetiroCajaDia from './RetiroCajaDiaModel.js';
 import Venta from '../Venta/VentaModel.js';
 import Devolucion from '../Devolucion/DevolucionModel.js';
+import { cobrosDeCuentaCorriente } from '../MovimientoCuentaCorriente/CuentaCorrienteService.js';
 import { schemaCrearRetiroCaja } from './RetiroCajaSchema.js';
 import { obtenerRango } from '../../utils/FechasUtils.js';
 import { enviarEvento } from '../../services/PushService.js';
@@ -40,7 +41,10 @@ const calcularEfectivoVendido = async (desde, hasta, session = null) => {
   const devoluciones = await queryDevoluciones;
   const reintegros = devoluciones.reduce((sum, r) => sum + (Number(r.efectivoDevuelto) || 0), 0);
 
-  return Math.max(0, redondear(ventas - reintegros));
+  // Cobrarle a un cliente en efectivo si suma a la gaveta, aunque la venta haya sido a cuenta corriente.
+  const cobros = await cobrosDeCuentaCorriente(desde, hasta, session);
+
+  return Math.max(0, redondear(ventas - reintegros + cobros.efectivo));
 };
 
 const obtenerOffset = (req) => {

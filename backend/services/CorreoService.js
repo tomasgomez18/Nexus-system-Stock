@@ -135,6 +135,9 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
   const trCantidad = close.transferencia?.cantidad || 0;
   const tarjeta = formatoPesos(close.tarjeta?.total || 0);
   const tjCantidad = close.tarjeta?.cantidad || 0;
+  const cuentaCorriente = formatoPesos(close.cuentaCorriente?.total || 0);
+  const ccCantidad = close.cuentaCorriente?.cantidad || 0;
+  const totalCobrosCuentaCorriente = close.totalCobrosCuentaCorriente || 0;
   const abiertoPor = close.abiertoPor || '';
   const horaApertura = close.abiertaEn ? construirHora(close.abiertaEn, offset) : '';
   const cerradoPor = close.cerradoPor || '—';
@@ -149,7 +152,9 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
   const efectivoDevuelto = close.efectivoDevuelto || 0;
   const efectivoEsperado = Math.max(
     0,
-    Math.round((fondoInicial + (close.efectivo?.total || 0) - totalRetiros - efectivoDevuelto) * 100) / 100
+    Math.round(
+      (fondoInicial + (close.efectivo?.total || 0) - totalRetiros - efectivoDevuelto + (close.cobrosEfectivo || 0)) * 100
+    ) / 100
   );
   const retiros = close.retiros || [];
 
@@ -160,6 +165,10 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
     ['Transferencia', transferencia],
     ['Tarjeta', tarjeta],
   ];
+
+  if ((close.cuentaCorriente?.total || 0) > 0) {
+    filas.push(['Cuenta corriente', cuentaCorriente]);
+  }
 
   if (abiertoPor) {
     filas.push(['Apertura', `${abiertoPor}${horaApertura ? ` (${horaApertura})` : ''}`]);
@@ -177,7 +186,10 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
   if (efectivoDevuelto > 0) {
     filas.push(['Reintegros en efectivo', formatoPesos(efectivoDevuelto)]);
   }
-  if (totalRetiros > 0 || efectivoDevuelto > 0 || fondoInicial > 0) {
+  if (totalCobrosCuentaCorriente > 0) {
+    filas.push(['Cobros en cuenta corriente', formatoPesos(totalCobrosCuentaCorriente)]);
+  }
+  if (totalRetiros > 0 || efectivoDevuelto > 0 || fondoInicial > 0 || totalCobrosCuentaCorriente > 0) {
     filas.push(['Efectivo esperado', formatoPesos(efectivoEsperado)]);
   }
 
@@ -266,6 +278,11 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
           ${statCard('Transferencia', transferencia, trCantidad)}
           ${statCard('Tarjeta', tarjeta, tjCantidad)}
         </tr>
+        ${
+          (close.cuentaCorriente?.total || 0) > 0
+            ? `<tr>${statCard('Cuenta corriente', cuentaCorriente, ccCantidad)}</tr>`
+            : ''
+        }
       </table>
     </td></tr>`;
 

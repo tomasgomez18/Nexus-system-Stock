@@ -26,7 +26,7 @@ export const crearDevolucion = async (req, res, next) => {
 
 export const eliminarDevolucion = async (req, res, next) => {
   try {
-    await conReintentos(() => revertirDevolucion(req.params.id));
+    await conReintentos(() => revertirDevolucion(req.params.id, req.usuario));
     res.json({ message: 'Devolución eliminada correctamente' });
   } catch (error) {
     responderErrorDeServicio(error, res, next);

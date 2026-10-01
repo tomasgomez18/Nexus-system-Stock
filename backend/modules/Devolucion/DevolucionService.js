@@ -5,6 +5,21 @@ import Venta from '../Venta/VentaModel.js';
 import { registrarDevolucionEnVenta, anularDevolucionEnVenta, guardarConTicketUnico } from '../Venta/TicketUtils.js';
 import { indiceDeVariante, encontrarVariante, depositoDe } from '../../utils/VariantesUtils.js';
 import { obtenerArticulos, mismaLinea, prorratearPagos, totalEfectivoDePagos, esMismoDia } from '../../utils/VentasUtils.js';
+import {
+  montoDevueltoEnCuentaCorriente,
+  montoEnCuentaCorriente,
+  registrarCreditoDeDevolucion,
+  registrarDebitoDeVenta,
+  anularMovimientosDeDevolucion,
+} from '../MovimientoCuentaCorriente/CuentaCorrienteService.js';
+import {
+  cancelarCuotasDeVenta,
+  anularCargosDeVenta,
+  recalcularImputacionesCliente,
+  reactivarCuotasDeVenta,
+  planPorDefecto,
+  crearPlanDeVenta,
+} from '../CuotaCuentaCorriente/CuotasService.js';
 import { mensajeCierre, verificarOperacionNoEnCierre, MENSAJE_CIERRE_EN_CURSO } from '../../utils/CierresUtils.js';
 import { buscarCajaAbierta, cajaEsDeHoy, mensajeCajaAnterior } from '../../utils/CajaUtils.js';
 
@@ -166,6 +181,43 @@ export const ejecutarDevolucion = async (data, usuario) => {
       pagosOriginales,
     }], { session });
 
+    // Si el ticket se cargo a cuenta corriente, la devolucion le deja saldo a favor al cliente.
+    if (sale?.cliente) {
+      await registrarCreditoDeDevolucion(session, {
+        cliente: sale.cliente,
+        clienteNombre: sale.clienteNombre,
+        monto: montoDevueltoEnCuentaCorriente(pagosOriginales, montoTotalDevuelto),
+        venta: sale,
+        devolucion: returnRecord[0],
+        usuario,
+        nota: data.motivo || '',
+      });
+
+      // Si se devolvio el ticket completo, las cuotas pendientes se cancelan
+      // y los intereses/mora que quedaban se revierten con un credito.
+      if (sale.estado === 'devuelta') {
+        const { cargosPendientes } = await cancelarCuotasDeVenta(
+          session,
+          sale,
+          usuario,
+          'Devolución total del ticket'
+        );
+        if (cargosPendientes > 0) {
+          await registrarCreditoDeDevolucion(session, {
+            cliente: sale.cliente,
+            clienteNombre: sale.clienteNombre,
+            monto: cargosPendientes,
+            venta: sale,
+            devolucion: returnRecord[0],
+            usuario,
+            nota: 'Intereses y mora cancelados por la devolución total',
+          });
+        }
+      }
+
+      await recalcularImputacionesCliente(session, sale.cliente);
+    }
+
     const populated = await Devolucion.findById(returnRecord[0]._id)
       .session(session)
       .populate([
@@ -299,6 +351,7 @@ export const ejecutarCambio = async (data, usuario) => {
     const metodo = data.metodoPago || pagosOriginales[0]?.metodo || saleTicket?.metodoPago || 'efectivo';
     const mismoDiaTicket = Boolean(saleTicket) && esMismoDia(saleTicket.fechaCreacion, offset);
     const empleado = usuario?.nombre || data.empleado || '';
+    const clienteDelTicket = saleTicket?.cliente ? { cliente: saleTicket.cliente, clienteNombre: saleTicket.clienteNombre } : null;
 
     let ventaDiferencia = null;
     let efectivoDevuelto = 0;
@@ -345,10 +398,15 @@ export const ejecutarCambio = async (data, usuario) => {
         empleado,
         pagos: pagosNuevaVenta,
         descuento: 0,
+        cliente: clienteDelTicket?.cliente,
+        clienteNombre: clienteDelTicket?.clienteNombre || '',
       }], { session });
       await guardarConTicketUnico(ventaDiferencia[0], session);
     } else {
       const pagoDiferencia = Math.max(0, diferencia);
+      if (metodo === 'cuentaCorriente' && pagoDiferencia > 0 && !clienteDelTicket) {
+        throw errorDeServicio(400, 'Para cargar el cambio a la cuenta corriente necesitás un ticket con cliente');
+      }
       ventaDiferencia = await Venta.create([{
         articulos: [{
           producto: data.productoCargar,
@@ -362,6 +420,8 @@ export const ejecutarCambio = async (data, usuario) => {
         empleado,
         pagos: [{ metodo, monto: pagoDiferencia }],
         descuento: 0,
+        cliente: clienteDelTicket?.cliente,
+        clienteNombre: clienteDelTicket?.clienteNombre || '',
       }], { session });
       await guardarConTicketUnico(ventaDiferencia[0], session);
       if (diferencia < 0 && metodo === 'efectivo') {
@@ -369,7 +429,7 @@ export const ejecutarCambio = async (data, usuario) => {
       }
     }
 
-    await Devolucion.create([{
+    const canjeRecord = await Devolucion.create([{
       producto: data.productoDevolver,
       cantidad: data.cantidadDevolver,
       talle: data.talleDevolver || '',
@@ -389,6 +449,77 @@ export const ejecutarCambio = async (data, usuario) => {
       motivo: data.motivo || `Cambio por ${productoCargado.nombre}`,
     }], { session });
 
+    if (clienteDelTicket) {
+      const devolucion = canjeRecord[0];
+      await registrarCreditoDeDevolucion(session, {
+        cliente: clienteDelTicket.cliente,
+        clienteNombre: clienteDelTicket.clienteNombre,
+        monto: montoDevueltoEnCuentaCorriente(pagosOriginales, montoTotalDevuelto),
+        venta: saleTicket,
+        devolucion,
+        usuario,
+        nota: data.motivo || '',
+      });
+
+      // El canje genera una venta nueva: si se cargo a cuenta corriente, es un debito mas.
+      const montoNuevaVentaEnCuenta = montoEnCuentaCorriente(ventaDiferencia?.[0]?.pagos || []);
+      await registrarDebitoDeVenta(session, {
+        cliente: clienteDelTicket.cliente,
+        clienteNombre: clienteDelTicket.clienteNombre,
+        monto: montoNuevaVentaEnCuenta,
+        venta: ventaDiferencia?.[0],
+        usuario,
+        nota: 'Cambie/devolucion',
+        devolucion,
+      });
+      if (montoNuevaVentaEnCuenta > 0) {
+        await crearPlanDeVenta(session, {
+          cliente: clienteDelTicket.cliente,
+          clienteNombre: clienteDelTicket.clienteNombre,
+          venta: ventaDiferencia?.[0],
+          montoBase: montoNuevaVentaEnCuenta,
+          plan: await planPorDefecto(),
+          usuario,
+        });
+      }
+
+      // Si el cambio quedo a favor del cliente y se cargo a su cuenta, es un credito.
+      if (!mismoDiaTicket && diferencia < 0 && metodo === 'cuentaCorriente') {
+        await registrarCreditoDeDevolucion(session, {
+          cliente: clienteDelTicket.cliente,
+          clienteNombre: clienteDelTicket.clienteNombre,
+          monto: Math.abs(diferencia),
+          venta: saleTicket,
+          devolucion,
+          usuario,
+          nota: 'Diferencia a favor del cliente en el cambio',
+        });
+      }
+
+      // Si el ticket original quedo devuelto por completo, se cancelan sus cuotas pendientes.
+      if (saleTicket && saleTicket.estado === 'devuelta') {
+        const { cargosPendientes } = await cancelarCuotasDeVenta(
+          session,
+          saleTicket,
+          usuario,
+          'Devolución total del ticket'
+        );
+        if (cargosPendientes > 0) {
+          await registrarCreditoDeDevolucion(session, {
+            cliente: clienteDelTicket.cliente,
+            clienteNombre: clienteDelTicket.clienteNombre,
+            monto: cargosPendientes,
+            venta: saleTicket,
+            devolucion,
+            usuario,
+            nota: 'Intereses y mora cancelados por la devolución total',
+          });
+        }
+      }
+
+      await recalcularImputacionesCliente(session, clienteDelTicket.cliente);
+    }
+
     await session.commitTransaction();
     return {
       productoDevuelto,
@@ -406,7 +537,7 @@ export const ejecutarCambio = async (data, usuario) => {
   }
 };
 
-export const revertirDevolucion = async (id) => {
+export const revertirDevolucion = async (id, usuario) => {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
@@ -479,9 +610,11 @@ export const revertirDevolucion = async (id) => {
       }
     }
 
+    let ventaAfectada = null;
     if (returnRecord.venta) {
       const venta = await Venta.findById(returnRecord.venta).session(session);
       if (venta) {
+        ventaAfectada = venta;
         const eraDevuelta = venta.estado === 'devuelta';
         const articulos = (venta.articulos && venta.articulos.length > 0)
           ? venta.articulos
@@ -531,6 +664,7 @@ export const revertirDevolucion = async (id) => {
               .pop()?.i;
             if (idx !== undefined) venta.devoluciones.splice(idx, 1);
           }
+          await reactivarCuotasDeVenta(session, venta._id);
         } else {
           anularDevolucionEnVenta(venta, { cantidad: returnRecord.cantidad, monto: returnRecord.montoDevuelto || 0 });
         }
@@ -542,8 +676,16 @@ export const revertirDevolucion = async (id) => {
     if (returnRecord.ventaDiferenciaId) {
       const ventaDiferencia = await Venta.findById(returnRecord.ventaDiferenciaId).session(session);
       if (ventaDiferencia) {
+        await cancelarCuotasDeVenta(session, ventaDiferencia, usuario, 'Se revirtió el cambio');
+        await anularCargosDeVenta(session, ventaDiferencia._id, usuario, 'Se revirtió el cambio');
         await Venta.findByIdAndDelete(returnRecord.ventaDiferenciaId).session(session);
       }
+    }
+
+    await anularMovimientosDeDevolucion(session, returnRecord._id, usuario);
+
+    if (ventaAfectada?.cliente) {
+      await recalcularImputacionesCliente(session, ventaAfectada.cliente);
     }
 
     await Devolucion.findByIdAndDelete(id).session(session);

@@ -29,6 +29,12 @@ const dailyCloseSchema = new mongoose.Schema({
     total: { ...campoCentavosPositivo, default: 0 },
     cantidad: { type: Number, default: 0 },
   },
+  cuentaCorriente: {
+    total: { ...campoCentavosPositivo, default: 0 },
+    cantidad: { type: Number, default: 0 },
+  },
+  totalCobrosCuentaCorriente: { ...campoCentavosPositivo, default: 0 },
+  cobrosEfectivo: { ...campoCentavosPositivo, default: 0 },
   cerradoPor: { type: String, default: '' },
   cerradoPorUsuario: { type: String, trim: true, default: '' },
   cerradaEn: { type: Date },

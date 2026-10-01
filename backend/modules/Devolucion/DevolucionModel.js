@@ -71,7 +71,7 @@ const returnSchema = new mongoose.Schema(
     },
     pagosOriginales: {
       type: [{
-        metodo: { type: String, enum: ['efectivo', 'transferencia', 'tarjeta'] },
+        metodo: { type: String, enum: ['efectivo', 'transferencia', 'tarjeta', 'cuentaCorriente'] },
         monto: campoCentavosPositivo,
       }],
       default: [],
