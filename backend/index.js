@@ -12,7 +12,13 @@ import { contextoPeticion, registradorPeticiones } from './middlewares/RequestLo
 import { manejadorErrores } from './middlewares/ErrorMiddleware.js';
 import AutenticacionRoutes from './modules/Autenticacion/AutenticacionRoutes.js';
 import ProveedorRoutes from './modules/Proveedor/ProveedorRoutes.js';
+import ClienteRoutes from './modules/Cliente/ClienteRoutes.js';
+import MovimientoCuentaCorrienteRoutes from './modules/MovimientoCuentaCorriente/MovimientoCuentaCorrienteRoutes.js';
+import cuotasRoutes, { cuotasDeClienteRoutes } from './modules/CuotaCuentaCorriente/CuotaCuentaCorrienteRoutes.js';
+import AjustesCuentaCorrienteRoutes from './modules/AjustesCuentaCorriente/AjustesCuentaCorrienteRoutes.js';
+import SolicitudClienteRoutes from './modules/SolicitudCliente/SolicitudClienteRoutes.js';
 import ProductoRoutes from './modules/Producto/ProductoRoutes.js';
+import PromocionRoutes from './modules/Promocion/PromocionRoutes.js';
 import MovimientoStockRoutes from './modules/MovimientoStock/MovimientoStockRoutes.js';
 import DevolucionRoutes from './modules/Devolucion/DevolucionRoutes.js';
 import VentaRoutes from './modules/Venta/VentaRoutes.js';
@@ -24,7 +30,10 @@ import ReporteErrorRoutes from './modules/ReporteError/ReporteErrorRoutes.js';
 import Usuario from './modules/Autenticacion/UsuarioModel.js';
 import Venta from './modules/Venta/VentaModel.js';
 import CierreCaja from './modules/Venta/CierreCajaModel.js';
+import CuotaCuentaCorriente from './modules/CuotaCuentaCorriente/CuotaCuentaCorrienteModel.js';
+import Promocion from './modules/Promocion/PromocionModel.js';
 import { asegurarNumerosTicket, migrarArticulosVenta } from './modules/Venta/VentaController.js';
+import { revisarCuotas, revisarCuotasSiCorresponde } from './modules/CuotaCuentaCorriente/CuotasService.js';
 import { limpiarSuscripcionesHuerfanas } from './services/PushService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -131,12 +140,18 @@ const inicializar = () => {
       try {
         await Venta.init();
         await CierreCaja.init();
+        await CuotaCuentaCorriente.init();
+        await Promocion.init();
         const itemsMigrados = await migrarArticulosVenta();
         if (itemsMigrados > 0) logger.info(`Ventas legacy migradas al formato articulos[]: ${itemsMigrados}`);
         const migradas = await asegurarNumerosTicket();
         if (migradas > 0) logger.info(`Números de ticket asignados a ${migradas} ventas existentes`);
         const subsLimpiadas = await limpiarSuscripcionesHuerfanas();
         if (subsLimpiadas > 0) logger.info(`Suscripciones push de usuarios inactivos eliminadas: ${subsLimpiadas}`);
+        const revisionCuotas = await revisarCuotas();
+        if (revisionCuotas.morasAplicadas > 0 || revisionCuotas.avisosProximos > 0 || revisionCuotas.avisosVencidos > 0) {
+          logger.info('Revisión de cuotas de cuenta corriente', revisionCuotas);
+        }
       } catch (error) {
         const d = describirError(error);
         logger.error('No se pudieron ejecutar las tareas de arranque', {
@@ -235,8 +250,15 @@ app.use('/api', soloEscrituras(writeLimiter));
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', AutenticacionRoutes);
 app.use('/api/proveedores', ProveedorRoutes);
+app.use('/api/clientes', ClienteRoutes);
+app.use('/api/clientes', cuotasDeClienteRoutes);
+app.use('/api/clientes', MovimientoCuentaCorrienteRoutes);
+app.use('/api/cuotas', cuotasRoutes);
+app.use('/api/ajustes-cuenta-corriente', AjustesCuentaCorrienteRoutes);
+app.use('/api/solicitudesCliente', SolicitudClienteRoutes);
 app.use('/api/usuarios', UsuarioRoutes);
 app.use('/api/productos', ProductoRoutes);
+app.use('/api/promociones', PromocionRoutes);
 app.use('/api/movimientos-stock', MovimientoStockRoutes);
 app.use('/api/devoluciones', DevolucionRoutes);
 app.use('/api/ventas', VentaRoutes);
@@ -304,6 +326,18 @@ if (!process.env.VERCEL) {
           nivelDeDetalle: logger.level,
         });
       });
+
+      // En servidores siempre activos, revisar cuotas cada hora aunque nadie abra la app.
+      setInterval(() => {
+        revisarCuotasSiCorresponde().catch((error) => {
+          logger.warn('No se pudo revisar las cuotas de cuenta corriente', {
+            motivo: error?.message || 'Error desconocido',
+            origen: 'backend',
+            lugar: 'index.js',
+          });
+        });
+      }, 60 * 60 * 1000).unref();
+
       server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
           logger.error('El puerto ya está en uso', {
