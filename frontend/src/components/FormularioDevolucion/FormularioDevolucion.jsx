@@ -403,6 +403,9 @@ const FormularioDevolucion = ({ sale, open, onClose, onDone, defaultExchange = f
                       <option value="efectivo" className="bg-ios-surface2">Efectivo</option>
                       <option value="transferencia" className="bg-ios-surface2">Transferencia</option>
                       <option value="tarjeta" className="bg-ios-surface2">Tarjeta</option>
+                      {sale?.cliente && (
+                        <option value="cuentaCorriente" className="bg-ios-surface2">Cuenta corriente</option>
+                      )}
                     </IosSelect>
                   </IosField>
                 )}

@@ -17,7 +17,7 @@ import IosModal from '../../components/ui/IosModal';
 import IosToggle from '../../components/ui/IosToggle';
 import IosSegmented from '../../components/ui/IosSegmented';
 import { IosField, IosInput } from '../../components/ui/IosForm';
-import { IconChevronRight, IconChart, IconCash, IconBank, IconCard, IconTile } from '../../components/ui/icons';
+import { IconChevronRight, IconChart, IconCash, IconBank, IconCard, IconTile, IconWallet } from '../../components/ui/icons';
 
 const GraficosVentas = lazy(() => import('../../components/GraficosVentas/GraficosVentas'));
 
@@ -25,12 +25,14 @@ const metodosIcon = {
   efectivo: IconCash,
   transferencia: IconBank,
   tarjeta: IconCard,
+  cuentaCorriente: IconWallet,
 };
 
 const metodosGradient = {
   efectivo: 'from-emerald-400 to-green-600',
   transferencia: 'from-sky-400 to-blue-600',
   tarjeta: 'from-violet-400 to-purple-600',
+  cuentaCorriente: 'from-orange-400 to-amber-600',
 };
 
 const today = () => {
@@ -94,11 +96,18 @@ const turnoBadge = (t) => {
 const pagoBadge = (metodo) => {
   if (metodo === 'efectivo') return 'bg-green-500/15 text-green-400';
   if (metodo === 'transferencia') return 'bg-blue-500/15 text-blue-400';
+  if (metodo === 'cuentaCorriente') return 'bg-orange-500/15 text-orange-400';
   return 'bg-purple-500/15 text-purple-400';
 };
 
 const pagoLabel = (metodo) =>
-  metodo === 'efectivo' ? 'Efectivo' : metodo === 'transferencia' ? 'Transferencia' : 'Tarjeta';
+  metodo === 'efectivo'
+    ? 'Efectivo'
+    : metodo === 'transferencia'
+      ? 'Transferencia'
+      : metodo === 'cuentaCorriente'
+        ? 'Cuenta corriente'
+        : 'Tarjeta';
 
 const getEstadoVenta = (s) => {
   if (s.estado === 'devuelta') return { label: 'Devuelto', cls: 'bg-ios-red/15 text-ios-red' };
@@ -110,6 +119,7 @@ const metodosResumen = [
   { key: 'efectivo', label: 'Efectivo', cls: 'text-green-400' },
   { key: 'transferencia', label: 'Transferencia', cls: 'text-blue-400' },
   { key: 'tarjeta', label: 'Tarjeta', cls: 'text-purple-400' },
+  { key: 'cuentaCorriente', label: 'Cta. corriente', cls: 'text-orange-400' },
 ];
 
 const DetailRow = ({ c }) => (
@@ -148,7 +158,8 @@ const RetirosInfo = ({ turno }) => {
   const totalRetiros = Number(turno.totalRetiros) || 0;
   const efectivoDevuelto = Number(turno.efectivoDevuelto) || 0;
   const totalDevoluciones = Number(turno.totalDevoluciones) || 0;
-  if (totalRetiros <= 0 && efectivoDevuelto <= 0 && totalDevoluciones <= 0) return null;
+  const cobrosCuentaCorriente = Number(turno.totalCobrosCuentaCorriente) || 0;
+  if (totalRetiros <= 0 && efectivoDevuelto <= 0 && totalDevoluciones <= 0 && cobrosCuentaCorriente <= 0) return null;
   const fondoInicial = Number(turno.fondoInicial) || 0;
   const efectivoEsperado = Number.isFinite(turno.efectivoEsperado)
     ? turno.efectivoEsperado
@@ -175,6 +186,12 @@ const RetirosInfo = ({ turno }) => {
         <div className="flex items-center justify-between text-[12px]">
           <span className="text-ios-secondary">Reintegros en efectivo</span>
           <span className="text-ios-red font-semibold whitespace-nowrap">-{formatMoney(efectivoDevuelto)}</span>
+        </div>
+      )}
+      {cobrosCuentaCorriente > 0 && (
+        <div className="flex items-center justify-between text-[12px]">
+          <span className="text-ios-secondary">Cobros cuenta corriente</span>
+          <span className="text-green-400 font-semibold whitespace-nowrap">+{formatMoney(cobrosCuentaCorriente)}</span>
         </div>
       )}
       <div className="flex items-center justify-between pt-1">
@@ -938,6 +955,7 @@ const Ventas = () => {
                     <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Efectivo</th>
                     <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Transferencia</th>
                     <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Tarjeta</th>
+                    <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Cta. cte.</th>
                     <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Cerrado</th>
                     <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Cerrado por</th>
                     <th className="text-right px-5 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Acción</th>
@@ -946,7 +964,7 @@ const Ventas = () => {
                 <tbody>
                   {closes.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="text-center py-10 text-ios-tertiary text-sm">
+                      <td colSpan={11} className="text-center py-10 text-ios-tertiary text-sm">
                         No hay cierres en este periodo
                       </td>
                     </tr>
@@ -974,6 +992,7 @@ const Ventas = () => {
                         <td className="px-4 py-3.5 text-green-400 font-semibold whitespace-nowrap tabular-nums">{formatMoney(c.efectivo?.total || 0)} <span className="text-ios-tertiary text-xs font-medium">({c.efectivo?.cantidad || 0})</span></td>
                         <td className="px-4 py-3.5 text-blue-400 font-semibold whitespace-nowrap tabular-nums">{formatMoney(c.transferencia?.total || 0)} <span className="text-ios-tertiary text-xs font-medium">({c.transferencia?.cantidad || 0})</span></td>
                         <td className="px-4 py-3.5 text-purple-400 font-semibold whitespace-nowrap tabular-nums">{formatMoney(c.tarjeta?.total || 0)} <span className="text-ios-tertiary text-xs font-medium">({c.tarjeta?.cantidad || 0})</span></td>
+                        <td className="px-4 py-3.5 text-orange-400 font-semibold whitespace-nowrap tabular-nums">{formatMoney(c.cuentaCorriente?.total || 0)} <span className="text-ios-tertiary text-xs font-medium">({c.cuentaCorriente?.cantidad || 0})</span></td>
                         <td className="px-4 py-3.5 text-ios-tertiary text-xs whitespace-nowrap">{new Date(c.cerradaEn).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</td>
                         <td className="px-4 py-3.5 text-ios-secondary">
                           {c.turnos

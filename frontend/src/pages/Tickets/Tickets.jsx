@@ -22,11 +22,18 @@ const getItems = (s) =>
 const pagoBadge = (metodo) => {
   if (metodo === 'efectivo') return 'bg-green-500/15 text-green-400';
   if (metodo === 'transferencia') return 'bg-blue-500/15 text-blue-400';
+  if (metodo === 'cuentaCorriente') return 'bg-orange-500/15 text-orange-400';
   return 'bg-purple-500/15 text-purple-400';
 };
 
 const pagoLabel = (metodo) =>
-  metodo === 'efectivo' ? 'Efectivo' : metodo === 'transferencia' ? 'Transferencia' : 'Tarjeta';
+  metodo === 'efectivo'
+    ? 'Efectivo'
+    : metodo === 'transferencia'
+      ? 'Transferencia'
+      : metodo === 'cuentaCorriente'
+        ? 'Cuenta corriente'
+        : 'Tarjeta';
 
 const getNumero = (s) => (s.ticketNumero ? String(s.ticketNumero) : '—');
 
