@@ -11,6 +11,8 @@ import { indiceDeVariante, depositoDe } from '../../utils/VariantesUtils.js';
 import { ejecutarCambio } from '../Devolucion/DevolucionService.js';
 import { responderErrorDeServicio } from '../../utils/RespuestaErrorUtils.js';
 import { conReintentos } from '../../utils/TransaccionesUtils.js';
+import { promocionesVigentes } from '../Promocion/PromocionService.js';
+import { ofertaDeProducto } from '../../utils/PreciosUtils.js';
 
 const escaparRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -101,8 +103,14 @@ export const obtenerProductos = async (req, res, next) => {
 
     const limite = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 2000);
     const products = await Producto.find(filter).sort({ nombre: 1 }).limit(limite);
+    const promociones = await promocionesVigentes();
 
-    res.json(products);
+    res.json(
+      products.map((product) => ({
+        ...product.toJSON(),
+        oferta: ofertaDeProducto(product, promociones),
+      }))
+    );
   } catch (error) {
     next(error);
   }
@@ -140,7 +148,8 @@ export const obtenerProductoPorCodigo = async (req, res, next) => {
     if (!product) {
       return res.status(404).json({ message: `No existe un producto con el código "${codigo}"` });
     }
-    res.json(product);
+    const promociones = await promocionesVigentes();
+    res.json({ ...product.toJSON(), oferta: ofertaDeProducto(product, promociones) });
   } catch (error) {
     next(error);
   }
@@ -162,7 +171,8 @@ export const obtenerProducto = async (req, res, next) => {
     if (!product) {
       return res.status(404).json({ message: 'Producto no encontrado' });
     }
-    res.json(product);
+    const promociones = await promocionesVigentes();
+    res.json({ ...product.toJSON(), oferta: ofertaDeProducto(product, promociones) });
   } catch (error) {
     next(error);
   }

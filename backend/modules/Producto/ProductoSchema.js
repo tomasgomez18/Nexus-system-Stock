@@ -78,7 +78,7 @@ export const schemaIntercambio = z.object({
   colorCargar: z.string().optional().default(''),
   motivo: z.string().optional().default('Cambio'),
   venta: objectId.optional(),
-  metodoPago: z.enum(['efectivo', 'transferencia', 'tarjeta']).optional(),
+  metodoPago: z.enum(['efectivo', 'transferencia', 'tarjeta', 'cuentaCorriente']).optional(),
   empleado: z.string().optional(),
   offset: z.number().int().optional(),
 });
