@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { obtenerProductos, crearProducto, actualizarProducto, eliminarProducto, addDeposito, reponerStock, pasarSalon } from '../../api/productos';
 import { obtenerMovimientosStock } from '../../api/movimientosStock';
+import { obtenerPromociones, crearPromocion, cancelarPromocion } from '../../api/promociones';
 import { obtenerMensajeErrorApi } from '../../utils/apiError';
 import { printLabel } from '../../utils/printLabel';
 import { formatDate, formatMoney } from '../../utils/format';
+import { precioVigente, tieneOferta, etiquetaOferta } from '../../utils/precios';
 import { LIMITE_PRODUCTOS, depositoTotal, salonTotal, variantLabel, paramsProductos } from '../../utils/productos';
 import { useApi } from '../../hooks/useApi';
 import { useCategorias } from '../../hooks/useCategorias';
@@ -21,7 +23,7 @@ import { IosField, IosInput, IosSelect } from '../../components/ui/IosForm';
 import FormularioProducto from '../../components/FormularioProducto/FormularioProducto';
 import FiltroCategorias from '../../components/FiltroCategorias/FiltroCategorias';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { IconArrowUp, IconChevronDown, IconHistory, IconPencil, IconPlus, IconPrint, IconRefresh, IconTrash, IconWarehouse } from '../../components/ui/icons';
+import { IconArrowUp, IconChevronDown, IconHistory, IconPencil, IconPlus, IconPrint, IconRefresh, IconTrash, IconWarehouse, IconTag, IconCheck, IconClock, IconX } from '../../components/ui/icons';
 
 const TIPOS = {
   ingreso_deposito: { label: 'Ingreso a depósito', cls: 'bg-violet-500/15 text-violet-300' },
@@ -44,6 +46,19 @@ const MEDIDAS_ETIQUETA = {
 };
 
 const ETIQUETA_PREFS_KEY = 'deposito-etiqueta-prefs';
+
+const ESTADOS_PROMO = {
+  activa: { label: 'Activa', cls: 'text-ios-green bg-ios-green/10' },
+  programada: { label: 'Programada', cls: 'text-ios-tint bg-ios-tint/10' },
+  vencida: { label: 'Vencida', cls: 'text-ios-tertiary bg-ios-surface3' },
+  cancelada: { label: 'Cancelada', cls: 'text-ios-red bg-ios-red/10' },
+};
+
+const isoLocalParaInput = (fecha) => {
+  const d = new Date(fecha);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
 const Deposito = () => {
   const { esAdmin } = useAutenticacion();
@@ -89,6 +104,21 @@ const Deposito = () => {
   const [movHasta, setMovHasta] = useState('');
   const [movLimit, setMovLimit] = useState(100);
   const [pasarTodoSaving, setPasarTodoSaving] = useState(false);
+
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [seleccionados, setSeleccionados] = useState(() => new Set());
+  const [showPromo, setShowPromo] = useState(false);
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [showOfertas, setShowOfertas] = useState(false);
+  const [promociones, setPromociones] = useState([]);
+  const [promoForm, setPromoForm] = useState({
+    nombre: '',
+    tipo: 'porcentaje',
+    valor: '',
+    desde: '',
+    hasta: '',
+    todos: false,
+  });
 
   const { categorias, recargarCategorias } = useCategorias();
   const productosApi = useApi(
@@ -473,17 +503,135 @@ const Deposito = () => {
       </div>
     ) : null;
 
+  const todosSeleccionados = filtrados.length > 0 && filtrados.every((p) => seleccionados.has(p._id));
+
+  const toggleSeleccion = (id) => {
+    setSeleccionados((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
+      return copia;
+    });
+  };
+
+  const toggleTodos = () =>
+    setSeleccionados(todosSeleccionados ? new Set() : new Set(filtrados.map((p) => p._id)));
+
+  const salirModoSeleccion = () => {
+    setModoSeleccion(false);
+    setSeleccionados(new Set());
+  };
+
+  const abrirPromo = () => {
+    const ahora = new Date();
+    const fin = new Date(ahora.getTime() + 7 * 86400000);
+    fin.setHours(23, 59, 0, 0);
+    setPromoForm({
+      nombre: '',
+      tipo: 'porcentaje',
+      valor: '',
+      desde: isoLocalParaInput(ahora),
+      hasta: isoLocalParaInput(fin),
+      todos: false,
+    });
+    setShowPromo(true);
+  };
+
+  const guardarPromo = async () => {
+    if (promoSaving) return;
+    if (!promoForm.todos && seleccionados.size === 0) {
+      alert({ icon: 'warning', title: 'Sin productos', message: 'Seleccioná al menos un producto o aplicá a todos' });
+      return;
+    }
+    const valor = Number(promoForm.valor);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      alert({ icon: 'warning', title: 'Descuento inválido', message: 'El descuento debe ser mayor a 0' });
+      return;
+    }
+    if (promoForm.tipo === 'porcentaje' && valor > 100) {
+      alert({ icon: 'warning', title: 'Porcentaje inválido', message: 'El porcentaje no puede superar el 100%' });
+      return;
+    }
+    const desde = new Date(promoForm.desde);
+    const hasta = new Date(promoForm.hasta);
+    if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime()) || hasta <= desde) {
+      alert({ icon: 'warning', title: 'Fechas inválidas', message: 'La fecha de fin debe ser posterior a la de inicio' });
+      return;
+    }
+    setPromoSaving(true);
+    try {
+      await crearPromocion({
+        nombre: promoForm.nombre.trim(),
+        tipo: promoForm.tipo,
+        valor,
+        desde: desde.toISOString(),
+        hasta: hasta.toISOString(),
+        todos: promoForm.todos,
+        productos: promoForm.todos ? [] : [...seleccionados],
+      });
+      toast({ message: 'Promoción creada' });
+      setShowPromo(false);
+      salirModoSeleccion();
+      recargarProductos();
+    } catch (err) {
+      alert({ icon: 'error', title: 'No se pudo crear', message: obtenerMensajeErrorApi(err, 'Error al crear la promoción') });
+    } finally {
+      setPromoSaving(false);
+    }
+  };
+
+  const abrirOfertas = async () => {
+    setShowOfertas(true);
+    try {
+      const res = await obtenerPromociones();
+      setPromociones(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      alert({ icon: 'error', title: 'Error', message: obtenerMensajeErrorApi(err, 'Error al cargar las promociones') });
+    }
+  };
+
+  const cancelarPromo = async (promo) => {
+    const ok = await confirm({
+      icon: 'warning',
+      title: '¿Cancelar la promoción?',
+      message: 'Los productos vuelven al precio normal al instante.',
+      confirmText: 'Cancelar promoción',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await cancelarPromocion(promo._id);
+      toast({ message: 'Promoción cancelada' });
+      abrirOfertas();
+      recargarProductos();
+    } catch (err) {
+      alert({ icon: 'error', title: 'Error', message: obtenerMensajeErrorApi(err, 'Error al cancelar la promoción') });
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h1 className="text-[28px] font-bold text-ios-label tracking-tight">Depósito General</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {esAdmin && (
             <IosButton variant="primary" onClick={() => { setEditing(null); setShowForm(true); }}>
               <IconPlus className="w-4 h-4" />
               Nuevo Producto
+            </IosButton>
+          )}
+          {esAdmin && (
+            <IosButton variant="gray" onClick={abrirOfertas}>
+              <IconTag className="w-4 h-4" />
+              Ofertas
+            </IosButton>
+          )}
+          {esAdmin && tab === 'stock' && !modoSeleccion && (
+            <IosButton variant="tinted" onClick={() => setModoSeleccion(true)}>
+              <IconTag className="w-4 h-4" />
+              Descuentos
             </IosButton>
           )}
           <button
@@ -597,8 +745,23 @@ const Deposito = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr>
+                      {modoSeleccion && (
+                        <th className="w-10 px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={toggleTodos}
+                            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                              todosSeleccionados ? 'bg-ios-tint border-ios-tint text-white' : 'border-ios-separator text-transparent'
+                            }`}
+                            aria-label="Seleccionar todos"
+                          >
+                            <IconCheck className="w-3.5 h-3.5" strokeWidth={3} />
+                          </button>
+                        </th>
+                      )}
                       <th className="text-left px-5 py-3 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Producto</th>
                       <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Código</th>
+                      <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Precio</th>
                       <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Depósito</th>
                       <th className="text-left px-4 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Salón</th>
                       <th className="text-right px-5 py-3.5 text-ios-tertiary font-semibold uppercase tracking-wider text-[11px]">Acciones</th>
@@ -611,6 +774,23 @@ const Deposito = () => {
                         onClick={() => setExpandedId(expandedId === p._id ? null : p._id)}
                         className="border-t border-ios-separator/30 transition-colors hover:bg-ios-hover/[0.03] cursor-pointer"
                       >
+                        {modoSeleccion && (
+                          <td className="px-4 py-3.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSeleccion(p._id);
+                              }}
+                              className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                                seleccionados.has(p._id) ? 'bg-ios-tint border-ios-tint text-white' : 'border-ios-separator text-transparent'
+                              }`}
+                              aria-label={`Seleccionar ${p.nombre}`}
+                            >
+                              <IconCheck className="w-3.5 h-3.5" strokeWidth={3} />
+                            </button>
+                          </td>
+                        )}
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
                             {p.variantes?.length > 0 && (
@@ -626,6 +806,22 @@ const Deposito = () => {
                           {expandedId === p._id && <div className="mt-2">{detalleVariantes(p)}</div>}
                         </td>
                         <td className="px-4 py-3.5 text-ios-secondary text-xs tabular-nums">{p.codigo || '—'}</td>
+                        <td className="px-4 py-3.5">
+                          {p.precio == null ? (
+                            <span className="text-ios-tertiary">—</span>
+                          ) : tieneOferta(p) ? (
+                            <div className="leading-tight">
+                              <span className="block text-[11px] text-ios-tertiary line-through">{formatMoney(p.precio)}</span>
+                              <span className="text-ios-orange font-semibold">{formatMoney(precioVigente(p))}</span>
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-ios-orange/15 text-ios-orange">
+                                {etiquetaOferta(p.oferta)}
+                              </span>
+                              <span className="block text-[10px] text-ios-tertiary mt-0.5">Hasta {formatDate(p.oferta.hasta)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-ios-secondary tabular-nums">{formatMoney(p.precio)}</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3.5">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
                             depositoTotal(p) > 0 ? 'bg-violet-500/15 text-violet-300' : 'bg-ios-surface2 text-ios-tertiary'
@@ -675,8 +871,38 @@ const Deposito = () => {
                             Salón {salonTotal(p)}
                           </span>
                         </div>
+                        {p.precio != null && (
+                          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                            {tieneOferta(p) ? (
+                              <>
+                                <span className="text-xs text-ios-tertiary line-through">{formatMoney(p.precio)}</span>
+                                <span className="text-sm text-ios-orange font-semibold">{formatMoney(precioVigente(p))}</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-ios-orange/15 text-ios-orange">
+                                  {etiquetaOferta(p.oferta)}
+                                </span>
+                                <span className="text-[10px] text-ios-tertiary">Hasta {formatDate(p.oferta.hasta)}</span>
+                              </>
+                            ) : (
+                              <span className="text-xs text-ios-secondary">{formatMoney(p.precio)}</span>
+                            )}
+                          </div>
+                        )}
                       </button>
-                      <div className="shrink-0">{botonAcciones(p)}</div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {modoSeleccion && (
+                          <button
+                            type="button"
+                            onClick={() => toggleSeleccion(p._id)}
+                            className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors ${
+                              seleccionados.has(p._id) ? 'bg-ios-tint border-ios-tint text-white' : 'border-ios-separator text-transparent'
+                            }`}
+                            aria-label={`Seleccionar ${p.nombre}`}
+                          >
+                            <IconCheck className="w-4 h-4" strokeWidth={3} />
+                          </button>
+                        )}
+                        {botonAcciones(p)}
+                      </div>
                     </div>
                     {expandedId === p._id && p.variantes?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-ios-separator/40">{detalleVariantes(p)}</div>
@@ -1124,6 +1350,159 @@ const Deposito = () => {
                 : `${Number(etiquetaCantidad) || 1} etiqueta(s) de ${medidaEtiqueta.ancho || '—'}×${medidaEtiqueta.alto || '—'} mm, una por página.`}
               {' '}En el diálogo de impresión elegí márgenes en 0, escala 100% y sin encabezados ni pies.
             </p>
+          </div>
+        )}
+      </IosModal>
+
+      {tab === 'stock' && modoSeleccion && (
+        <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-xl bg-ios-surface/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-ios-alert px-3 py-2.5 flex items-center gap-2 animate-ios-modal">
+          <button
+            type="button"
+            onClick={toggleTodos}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-ios-control bg-ios-surface2 text-ios-secondary text-xs font-semibold hover:bg-ios-surface3 transition-colors"
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center ${todosSeleccionados ? 'bg-ios-tint border-ios-tint text-white' : 'border-ios-separator text-transparent'}`}>
+              <IconCheck className="w-3 h-3" strokeWidth={3} />
+            </span>
+            {todosSeleccionados ? 'Quitar todos' : 'Seleccionar todos'}
+          </button>
+          <span className="text-xs text-ios-secondary font-medium tabular-nums">
+            {seleccionados.size} seleccionado{seleccionados.size === 1 ? '' : 's'}
+          </span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <IosButton size="sm" variant="tinted" onClick={abrirPromo}>
+              <IconTag className="w-4 h-4" /> Aplicar descuento
+            </IosButton>
+            <button
+              onClick={salirModoSeleccion}
+              className="p-2 text-ios-tertiary hover:text-ios-label transition-colors"
+              aria-label="Salir del modo selección"
+            >
+              <IconX className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <IosModal
+        open={showPromo}
+        onClose={() => setShowPromo(false)}
+        title="Nueva promoción"
+        confirmText={promoSaving ? 'Creando…' : 'Crear promoción'}
+        onConfirm={guardarPromo}
+        confirmDisabled={promoSaving}
+      >
+        <div className="space-y-3">
+          <IosField label="Nombre (opcional)">
+            <IosInput
+              value={promoForm.nombre}
+              onChange={(e) => setPromoForm((f) => ({ ...f, nombre: e.target.value }))}
+              placeholder="Ej: Oferta de primavera"
+            />
+          </IosField>
+          <div className="grid grid-cols-2 gap-3">
+            <IosField label="Tipo" required>
+              <IosSelect value={promoForm.tipo} onChange={(e) => setPromoForm((f) => ({ ...f, tipo: e.target.value }))}>
+                <option value="porcentaje" className="bg-ios-surface2">Porcentaje (%)</option>
+                <option value="monto" className="bg-ios-surface2">Monto fijo ($)</option>
+              </IosSelect>
+            </IosField>
+            <IosField label={promoForm.tipo === 'porcentaje' ? 'Descuento (%)' : 'Descuento ($)'} required>
+              <IosInput
+                type="text"
+                inputMode="decimal"
+                value={promoForm.valor}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '' || /^\d{0,5}(\.\d{0,2})?$/.test(v)) setPromoForm((f) => ({ ...f, valor: v }));
+                }}
+                placeholder={promoForm.tipo === 'porcentaje' ? 'Ej: 20' : 'Ej: 1500'}
+              />
+            </IosField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <IosField label="Desde" required>
+              <IosInput
+                type="datetime-local"
+                value={promoForm.desde}
+                onChange={(e) => setPromoForm((f) => ({ ...f, desde: e.target.value }))}
+              />
+            </IosField>
+            <IosField label="Hasta" required>
+              <IosInput
+                type="datetime-local"
+                value={promoForm.hasta}
+                onChange={(e) => setPromoForm((f) => ({ ...f, hasta: e.target.value }))}
+              />
+            </IosField>
+          </div>
+          <label className="flex items-center justify-between gap-2 cursor-pointer select-none">
+            <span className="flex items-center gap-2.5">
+              <IosToggle checked={promoForm.todos} onChange={() => setPromoForm((f) => ({ ...f, todos: !f.todos }))} />
+              <span className="text-[13px] text-ios-secondary font-medium">Todos los productos (incluye nuevos)</span>
+            </span>
+          </label>
+          <p className="text-[11px] text-ios-tertiary">
+            {promoForm.todos
+              ? 'La promoción se aplica a todo el catálogo mientras esté vigente.'
+              : `Se aplica a ${seleccionados.size} producto${seleccionados.size === 1 ? '' : 's'} seleccionado${seleccionados.size === 1 ? '' : 's'}.`}
+          </p>
+        </div>
+      </IosModal>
+
+      <IosModal
+        open={showOfertas}
+        onClose={() => setShowOfertas(false)}
+        title="Promociones"
+        confirmText="Cerrar"
+        onConfirm={() => setShowOfertas(false)}
+        showCancel={false}
+        maxWidth="max-w-xl"
+      >
+        {promociones.length === 0 ? (
+          <p className="text-center text-sm text-ios-tertiary py-8">No hay promociones cargadas</p>
+        ) : (
+          <div className="space-y-2">
+            {promociones.map((promo) => {
+              const estado = ESTADOS_PROMO[promo.estado] || ESTADOS_PROMO.vencida;
+              return (
+                <div key={promo._id} className="rounded-2xl border border-ios-separator/30 bg-ios-surface px-3.5 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-ios-label truncate">
+                        {promo.nombre || 'Promoción'}
+                        <span className="text-ios-orange font-semibold">
+                          {' '}· {promo.tipo === 'porcentaje' ? `-${promo.valor}%` : `-${formatMoney(promo.valor)}`}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-ios-tertiary mt-0.5 flex items-center gap-1">
+                        <IconClock className="w-3 h-3" />
+                        {formatDate(promo.desde)} → {formatDate(promo.hasta)}
+                      </p>
+                      <p className="text-[11px] text-ios-tertiary mt-0.5">
+                        {promo.todos
+                          ? 'Todos los productos'
+                          : `${promo.cantidadProductos} producto${promo.cantidadProductos === 1 ? '' : 's'}`}
+                        {promo.creadoPor ? ` · ${promo.creadoPor}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0 space-y-1">
+                      <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-ios-pill ${estado.cls}`}>
+                        {estado.label}
+                      </span>
+                      {(promo.estado === 'activa' || promo.estado === 'programada') && (
+                        <button
+                          onClick={() => cancelarPromo(promo)}
+                          className="block w-full text-[11px] font-semibold text-ios-red hover:underline"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </IosModal>
