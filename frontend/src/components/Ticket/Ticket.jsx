@@ -11,7 +11,13 @@ const formatFecha = (d) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 const pagoLabel = (metodo) =>
-  metodo === 'efectivo' ? 'EFECTIVO' : metodo === 'transferencia' ? 'TRANSFERENCIA' : 'TARJETA';
+  metodo === 'efectivo'
+    ? 'EFECTIVO'
+    : metodo === 'transferencia'
+      ? 'TRANSFERENCIA'
+      : metodo === 'cuentaCorriente'
+        ? 'CUENTA CORRIENTE'
+        : 'TARJETA';
 
 const getItems = (sale) =>
   (sale.articulos && sale.articulos.length > 0
@@ -33,6 +39,42 @@ const getDevolucionLabel = (sale) => {
     return `DEVOLUCIÓN PARCIAL ${formatMoney(sale.montoDevuelto)}`;
   }
   return null;
+};
+
+const sumarMesesUtc = (fecha, meses) => {
+  const y = fecha.getUTCFullYear();
+  const m = fecha.getUTCMonth() + meses;
+  const dia = fecha.getUTCDate();
+  const ultimoDia = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(dia, ultimoDia)));
+};
+
+const formatFechaCuota = (fecha) =>
+  `${pad(fecha.getUTCDate())}/${pad(fecha.getUTCMonth() + 1)}/${fecha.getUTCFullYear()}`;
+
+/** Plan de cuotas de una venta cargada a cuenta corriente, listo para mostrar en el ticket. */
+const getPlanCuotas = (sale) => {
+  const plan = sale?.planCuotas;
+  const esCuentaCorriente = getPagos(sale).some((p) => p.metodo === 'cuentaCorriente');
+  if (!esCuentaCorriente || !plan?.cantidadCuotas || !plan?.primerVencimiento) return null;
+  const cantidad = Math.min(Math.max(Number(plan.cantidadCuotas) || 1, 1), 24);
+  const totalCentavos = Math.round((Number(plan.montoFinanciado) || 0) * 100);
+  const base = new Date(plan.primerVencimiento);
+  if (Number.isNaN(base.getTime()) || totalCentavos <= 0) return null;
+
+  const porCuota = Math.floor(totalCentavos / cantidad);
+  const cuotas = Array.from({ length: cantidad }, (_, i) => ({
+    numero: i + 1,
+    monto: (i === cantidad - 1 ? totalCentavos - porCuota * (cantidad - 1) : porCuota) / 100,
+    vencimiento: formatFechaCuota(sumarMesesUtc(base, i)),
+  }));
+
+  return {
+    cantidad,
+    cuotas,
+    interesPorcentaje: Number(plan.interesPorcentaje) || 0,
+    montoFinanciado: totalCentavos / 100,
+  };
 };
 
 const generarImagenesTicket = async (sale) => {
@@ -92,6 +134,7 @@ const TicketBody = ({ sale }) => {
 
   const items = getItems(sale);
   const pagos = getPagos(sale);
+  const planCuotas = getPlanCuotas(sale);
   const descuento = Number(sale.descuento) || 0;
   const esLegacy = !(sale.articulos && sale.articulos.length > 0);
   const subtotal = esLegacy
@@ -125,6 +168,12 @@ const TicketBody = ({ sale }) => {
         <span>Vendedor</span>
         <span>{sale.empleado || '—'}</span>
       </div>
+      {sale.clienteNombre && (
+        <div className="ticket-line">
+          <span>Cliente</span>
+          <span>{sale.clienteNombre}</span>
+        </div>
+      )}
 
       <div className="ticket-sep">==============================</div>
 
@@ -174,6 +223,28 @@ const TicketBody = ({ sale }) => {
           <span>{formatMoney(p.monto)}</span>
         </div>
       ))}
+
+      {planCuotas && (
+        <>
+          <div className="ticket-sep">==============================</div>
+          <div className="ticket-line">
+            <span>PLAN DE CUOTAS</span>
+            <span>{planCuotas.cantidad}x</span>
+          </div>
+          {planCuotas.cuotas.map((cuota) => (
+            <div className="ticket-line" key={cuota.numero}>
+              <span>Cuota {cuota.numero}/{planCuotas.cantidad}</span>
+              <span>{formatMoney(cuota.monto)} · vence {cuota.vencimiento}</span>
+            </div>
+          ))}
+          {planCuotas.interesPorcentaje > 0 && (
+            <div className="ticket-line">
+              <span>Interés financiación</span>
+              <span>{planCuotas.interesPorcentaje}%</span>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="ticket-sep">==============================</div>
 
@@ -257,6 +328,7 @@ const escapeHtml = (str) =>
 const renderToHtml = (sale, qrDataUrl = '', barcodes = {}) => {
   const items = getItems(sale);
   const pagos = getPagos(sale);
+  const planCuotas = getPlanCuotas(sale);
   const descuento = Number(sale.descuento) || 0;
   const esLegacy = !(sale.articulos && sale.articulos.length > 0);
   const subtotal = esLegacy
@@ -289,6 +361,12 @@ const renderToHtml = (sale, qrDataUrl = '', barcodes = {}) => {
     .map((p) => line(pagoLabel(p.metodo), formatMoney(p.monto)))
     .join('');
 
+  const planHtml = planCuotas
+    ? `${sep()}<div class="ticket-line"><span>PLAN DE CUOTAS</span><span>${planCuotas.cantidad}x</span></div>${planCuotas.cuotas
+        .map((c) => line(`Cuota ${c.numero}/${planCuotas.cantidad}`, `${formatMoney(c.monto)} · vence ${c.vencimiento}`))
+        .join('')}${planCuotas.interesPorcentaje > 0 ? line('Interés financiación', `${planCuotas.interesPorcentaje}%`) : ''}`
+    : '';
+
   return `
 <div class="ticket-body">
   <div class="text-center">
@@ -300,6 +378,7 @@ const renderToHtml = (sale, qrDataUrl = '', barcodes = {}) => {
   ${getDevolucionLabel(sale) ? `<p class="ticket-devolucion" style="text-align:center;font-weight:bold;letter-spacing:1px;color:#b91c1c;">${escapeHtml(getDevolucionLabel(sale))}</p>` : ''}
   ${line('Fecha', formatFecha(new Date(sale.fechaCreacion || Date.now())))}
   ${line('Vendedor', sale.empleado || '—')}
+  ${sale.clienteNombre ? line('Cliente', sale.clienteNombre) : ''}
   ${sep()}
   ${itemsHtml}
   ${sep()}
@@ -308,6 +387,7 @@ const renderToHtml = (sale, qrDataUrl = '', barcodes = {}) => {
   ${line('TOTAL', formatMoney(sale.total), 'ticket-total')}
   ${sep()}
   ${pagosHtml}
+  ${planHtml}
   ${sep()}
   ${(qrDataUrl || barcodesHtml) ? `<div class="ticket-codes">${qrDataUrl ? `<div class="ticket-qr"><img src="${qrDataUrl}" alt="QR del ticket" /></div>` : ''}${barcodesHtml}</div>` : ''}
   <p class="text-center" style="font-size:10px;opacity:0.7;">¡Gracias por su compra!<br/>${NEGOCIO}</p>
