@@ -55,6 +55,23 @@ const notificationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    /** Los avisos del sistema (ej. una solicitud de alta) solo se muestran a los administradores. */
+    soloAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    /** Vincula el aviso con el registro que lo originó, para poder cerrarlo al resolverlo. */
+    solicitud: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SolicitudCliente',
+      default: null,
+    },
+    /** Avisos de cuotas de cuenta corriente (por vencer, vencidas, mora). */
+    cuota: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CuotaCuentaCorriente',
+      default: null,
+    },
     vistosPor: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' }],
       default: [],

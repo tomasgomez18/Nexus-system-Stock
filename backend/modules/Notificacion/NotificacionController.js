@@ -6,6 +6,8 @@ import {
   schemaCompletarNotificacion,
 } from './NotificacionSchema.js';
 import { enviarEvento } from '../../services/PushService.js';
+import { enSegundoPlano } from '../../utils/TareasUtils.js';
+import { revisarCuotasSiCorresponde } from '../CuotaCuentaCorriente/CuotasService.js';
 
 const poblarUsuarios = (query) =>
   query
@@ -29,10 +31,17 @@ const resolverDestinatario = async (destinatario) => {
 
 export const obtenerNotificaciones = async (req, res, next) => {
   try {
+    enSegundoPlano(revisarCuotasSiCorresponde(), {
+      mensaje: 'No se pudo revisar las cuotas de cuenta corriente',
+      lugar: 'NotificacionController.js',
+    });
     const filtro =
       req.usuario.rol === 'admin'
         ? {}
-        : { $or: [{ destinatario: null }, { destinatario: req.usuario.id }] };
+        : {
+            soloAdmin: { $ne: true },
+            $or: [{ destinatario: null }, { destinatario: req.usuario.id }],
+          };
     const notificaciones = await poblarUsuarios(
       Notificacion.find(filtro).sort({ fechaCreacion: -1 })
     );
@@ -117,7 +126,10 @@ export const completarNotificacion = async (req, res, next) => {
         estado: { $ne: 'realizado' },
         ...(esAdmin
           ? {}
-          : { $or: [{ destinatario: null }, { destinatario: req.usuario.id }] }),
+          : {
+              soloAdmin: { $ne: true },
+              $or: [{ destinatario: null }, { destinatario: req.usuario.id }],
+            }),
       },
       {
         $set: {
