@@ -76,6 +76,25 @@ test('los ejes suman lo mismo que las estadísticas existentes', async () => {
   assert.equal(sumaSerie(analitica.body.ejes.mes.puntos, 'emp_0'), 440);
 });
 
+test('las estadísticas separan la cuenta corriente como método de pago', async () => {
+  await crearVentaTest({ total: 100, cantidad: 1, pagos: [{ metodo: 'efectivo', monto: 100 }] });
+  await crearVentaTest({ total: 300, cantidad: 2, precio: 150, pagos: [{ metodo: 'cuentaCorriente', monto: 300 }] });
+  await crearVentaTest({
+    total: 200,
+    cantidad: 1,
+    pagos: [
+      { metodo: 'efectivo', monto: 100 },
+      { metodo: 'cuentaCorriente', monto: 100 },
+    ],
+  });
+
+  const res = await runHandler(obtenerEstadisticasVentas, { query: { offset: '0' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.efectivo.total, 200);
+  assert.equal(res.body.cuentaCorriente.total, 400);
+  assert.equal(res.body.total, 600);
+});
+
 test('la serie por día respeta el offset del cliente y rellena días sin ventas', async () => {
   await crearVentaTest({ fechaCreacion: new Date('2026-09-10T02:30:00.000Z'), total: 100 });
   await crearVentaTest({ fechaCreacion: new Date('2026-09-12T12:00:00.000Z'), total: 300 });
