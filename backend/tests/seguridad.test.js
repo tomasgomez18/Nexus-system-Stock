@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { validarEndpointPush, construirFiltro } from '../services/PushService.js';
 import { construirReporte } from '../modules/ReporteError/ReporteErrorController.js';
 import { conReintentos, esErrorTransitorio } from '../utils/TransaccionesUtils.js';
+import { admin } from '../middlewares/AutenticacionMiddleware.js';
 
 test('conReintentos reintenta solo los errores transitorios', async () => {
   let intentos = 0;
@@ -73,4 +74,43 @@ test('construirReporte no confía en el usuario del body y sanitiza el stack', (
   assert.equal(reporte.quien, 'anonimo');
   assert.ok(!reporte.stack.includes('\n'), 'el stack no debe conservar saltos de línea');
   assert.ok(!reporte.stack.includes('\u001b'), 'el stack no debe conservar secuencias ANSI');
+});
+
+test('admin bloquea a los empleados y deja pasar a los administradores', () => {
+  let status = null;
+  let body = null;
+  const res = {
+    status(code) {
+      status = code;
+      return this;
+    },
+    json(data) {
+      body = data;
+      return this;
+    },
+  };
+
+  let pasoEmpleado = false;
+  admin({ usuario: { rol: 'user' } }, res, () => {
+    pasoEmpleado = true;
+  });
+  assert.equal(status, 403);
+  assert.equal(pasoEmpleado, false);
+  assert.match(body.message, /administrador/);
+
+  status = null;
+  body = null;
+  let pasoAdmin = false;
+  admin({ usuario: { rol: 'admin' } }, res, () => {
+    pasoAdmin = true;
+  });
+  assert.equal(status, null);
+  assert.equal(pasoAdmin, true);
+
+  let pasoSinUsuario = false;
+  admin({}, res, () => {
+    pasoSinUsuario = true;
+  });
+  assert.equal(status, 403);
+  assert.equal(pasoSinUsuario, false);
 });
