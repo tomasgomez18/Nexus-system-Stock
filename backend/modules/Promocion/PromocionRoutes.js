@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
   obtenerPromociones,
+  obtenerPromocionesVigentes,
+  obtenerProductosDePromocion,
   crearPromocion,
   cancelarPromocion,
   eliminarPromocion,
@@ -10,6 +12,8 @@ import { proteger, admin } from '../../middlewares/AutenticacionMiddleware.js';
 const router = Router();
 
 router.use(proteger);
+router.get('/vigentes', obtenerPromocionesVigentes);
+router.get('/vigentes/:id/productos', obtenerProductosDePromocion);
 router.use(admin);
 
 router.get('/', obtenerPromociones);

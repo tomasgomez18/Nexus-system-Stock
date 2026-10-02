@@ -1,8 +1,10 @@
 import mongoose from 'mongoose';
 import Promocion from './PromocionModel.js';
+import Producto from '../Producto/ProductoModel.js';
 import { schemaCrearPromocion } from './PromocionSchema.js';
 import { verificarSuperposicion } from './PromocionService.js';
-import { estadoDePromocion } from '../../utils/PreciosUtils.js';
+import { estadoDePromocion, precioConPromocion, promocionVigente } from '../../utils/PreciosUtils.js';
+import { aCentavos, deCentavos } from '../../utils/DineroUtils.js';
 
 const serializarPromocion = (promo, ahora = new Date()) => ({
   ...promo.toJSON(),
@@ -14,6 +16,68 @@ export const obtenerPromociones = async (req, res, next) => {
   try {
     const promociones = await Promocion.find().sort({ desde: -1 }).limit(200);
     res.json(promociones.map((promo) => serializarPromocion(promo)));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Listado liviano para el banner de cronómetro: activas y programadas, visible para todos. */
+export const obtenerPromocionesVigentes = async (req, res, next) => {
+  try {
+    const ahora = new Date();
+    const promociones = await Promocion.find({ activa: true, hasta: { $gte: ahora } }).sort({ hasta: 1 });
+    res.json({
+      ahora,
+      promociones: promociones.map((promo) => ({
+        _id: promo._id,
+        nombre: promo.nombre || '',
+        tipo: promo.tipo,
+        valor: promo.valor,
+        desde: promo.desde,
+        hasta: promo.hasta,
+        todos: promo.todos,
+        cantidadProductos: promo.todos ? null : (promo.productos || []).length,
+        estado: estadoDePromocion(promo, ahora),
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Productos que entran en una promoción vigente, para el cajón del banner. */
+export const obtenerProductosDePromocion = async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+    const ahora = new Date();
+    const promo = await Promocion.findOne({ _id: req.params.id, activa: true, hasta: { $gte: ahora } });
+    if (!promo) {
+      return res.status(404).json({ message: 'Promoción no encontrada o vencida' });
+    }
+
+    const filter = promo.todos ? {} : { _id: { $in: promo.productos } };
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const limite = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 2000);
+
+    const [productos, total] = await Promise.all([
+      Producto.find(filter).sort({ nombre: 1, _id: 1 }).skip(offset).limit(limite),
+      Producto.countDocuments(filter),
+    ]);
+
+    res.json({
+      total,
+      vigente: promocionVigente(promo, ahora),
+      productos: productos.map((producto) => ({
+        _id: producto._id,
+        nombre: producto.nombre,
+        precio: producto.precio,
+        cantidad: producto.cantidad,
+        categoria: producto.categoria,
+        precioOferta: deCentavos(precioConPromocion(aCentavos(producto.precio), promo)),
+      })),
+    });
   } catch (error) {
     next(error);
   }
