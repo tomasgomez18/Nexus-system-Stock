@@ -162,6 +162,15 @@ const Deposito = () => {
 
   const handleGuardar = async (data) => {
     if (isSubmitting) return;
+    if (editing) {
+      const ok = await confirm({
+        icon: 'warning',
+        title: '¿Guardar cambios del producto?',
+        message: `Se van a sobrescribir los datos guardados de "${editing.nombre}".`,
+        confirmText: 'Guardar',
+      });
+      if (!ok) return;
+    }
     setIsSubmitting(true);
     try {
       if (editing) {
