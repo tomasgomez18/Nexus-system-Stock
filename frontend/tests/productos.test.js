@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { depositoTotal, salonTotal, variantLabel, tieneStockBajo, soloEnDeposito, paramsProductos, variantesParaEnviar } from './productos';
+import { depositoTotal, salonTotal, variantLabel, tieneStockBajo, soloEnDeposito, paramsProductos, variantesParaEnviar } from '../src/utils/productos';
 
 describe('depositoTotal y salonTotal', () => {
   it('suman las variantes cuando existen', () => {

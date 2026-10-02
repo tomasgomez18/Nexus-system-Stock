@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney, formatDateShort } from './format';
+import { formatMoney, formatDateShort } from '../src/utils/format';
 
 describe('formatMoney', () => {
   it('formatea montos con dos decimales y separador es-AR', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pushModal, popModal, esTopModal, modalStackVacio } from './iosModalStack';
+import { pushModal, popModal, esTopModal, modalStackVacio } from '../src/components/ui/iosModalStack';
 
 describe('iosModalStack', () => {
   it('apila y desapila modales marcando solo el último como superior', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluarExpresion, unirEntrada } from './calculadora';
+import { evaluarExpresion, unirEntrada } from '../src/utils/calculadora';
 
 const evaluar = (expresion, grados = true) => evaluarExpresion(expresion, { grados });
 
