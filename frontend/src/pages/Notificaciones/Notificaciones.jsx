@@ -123,6 +123,15 @@ const Notificaciones = () => {
       return;
     }
     if (savingNotif) return;
+    if (editing) {
+      const ok = await confirm({
+        icon: 'warning',
+        title: '¿Guardar cambios del aviso?',
+        message: `Se van a sobrescribir los datos del aviso "${editing.titulo}".`,
+        confirmText: 'Guardar',
+      });
+      if (!ok) return;
+    }
     setSavingNotif(true);
     const payload = {
       titulo: form.titulo,
