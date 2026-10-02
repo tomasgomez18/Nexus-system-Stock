@@ -297,7 +297,7 @@ const FormularioProducto = ({ initial, onSubmit, onCancel, isSubmitting: externa
                           placeholder="Talle (opc.)"
                           value={form.variants[i].talle}
                           onChange={(e) => updateVariant(i, 'talle', e.target.value)}
-                          className="flex-1 sm:flex-none w-24 px-3 py-2 bg-ios-surface rounded-ios-card text-ios-label placeholder:text-ios-tertiary focus:outline-none focus:ring-2 focus:ring-ios-tint/40 transition-all text-sm"
+                          className="flex-1 min-w-0 sm:flex-none w-24 px-3 py-2 bg-ios-surface rounded-ios-card text-ios-label placeholder:text-ios-tertiary focus:outline-none focus:ring-2 focus:ring-ios-tint/40 transition-all text-sm"
                         />
                         <input
                           type="number"
@@ -305,7 +305,7 @@ const FormularioProducto = ({ initial, onSubmit, onCancel, isSubmitting: externa
                           placeholder="Cant. depósito"
                           value={form.variants[i].deposito}
                           onChange={(e) => updateVariant(i, 'deposito', e.target.value)}
-                          className="flex-1 sm:flex-none w-24 px-3 py-2 bg-ios-surface rounded-ios-card text-ios-label placeholder:text-ios-tertiary focus:outline-none focus:ring-2 focus:ring-ios-tint/40 transition-all text-sm"
+                          className="flex-1 min-w-0 sm:flex-none w-24 px-3 py-2 bg-ios-surface rounded-ios-card text-ios-label placeholder:text-ios-tertiary focus:outline-none focus:ring-2 focus:ring-ios-tint/40 transition-all text-sm"
                         />
                         <button
                           type="button"

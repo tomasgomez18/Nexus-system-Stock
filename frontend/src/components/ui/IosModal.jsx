@@ -100,8 +100,8 @@ const IosModal = ({
               <div className="w-9 h-[5px] rounded-full bg-ios-surface3" />
             </div>
             {title && (
-              <div className="px-5 pt-3 pb-1 shrink-0 relative">
-                <h2 className="text-[17px] font-semibold text-ios-label text-center leading-snug">{title}</h2>
+              <div className={`pt-3 pb-1 shrink-0 relative ${showClose ? 'px-12' : 'px-5'}`}>
+                <h2 className="text-[17px] font-semibold text-ios-label text-center leading-snug break-words">{title}</h2>
                 {showClose && (
                   <button
                     onClick={onClose}
@@ -145,8 +145,8 @@ const IosModal = ({
             className={`w-full ${maxWidth} bg-ios-surface rounded-ios-alert shadow-ios-alert overflow-hidden animate-ios-centered max-h-[90vh] flex flex-col border border-white/[0.07] focus:outline-none`}
           >
             {title && (
-              <div className="px-6 pt-5 pb-1 shrink-0 relative">
-                <h2 className="text-[17px] font-semibold text-ios-label leading-snug">{title}</h2>
+              <div className={`px-6 pt-5 pb-1 shrink-0 relative ${showClose ? 'pr-16' : ''}`}>
+                <h2 className="text-[17px] font-semibold text-ios-label leading-snug break-words">{title}</h2>
                 {showClose && (
                   <button
                     onClick={onClose}
