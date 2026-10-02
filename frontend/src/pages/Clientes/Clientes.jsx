@@ -100,6 +100,15 @@ const Clientes = () => {
       alert({ icon: 'warning', title: 'Campo requerido', message: 'El nombre es obligatorio' });
       return;
     }
+    if (editando) {
+      const ok = await confirm({
+        icon: 'warning',
+        title: '¿Guardar cambios?',
+        message: `Se van a sobrescribir los datos guardados de "${editando.nombre}".`,
+        confirmText: 'Guardar',
+      });
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       const datos = { ...form, nombre };
