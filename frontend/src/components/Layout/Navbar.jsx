@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAutenticacion } from '../../context/autenticacionContexto';
 import { useTheme } from '../../context/themeContexto';
+import { useIosAlert } from '../alerts';
 import { IconLogout, IconChevronDown, IconSun, IconMoon, IconCalculator } from '../ui/icons';
 import IosToggle from '../ui/IosToggle';
 import Calculadora from '../Calculadora/Calculadora';
@@ -8,8 +9,21 @@ import Calculadora from '../Calculadora/Calculadora';
 const Navbar = () => {
   const { usuario, logout } = useAutenticacion();
   const { theme, toggleTheme } = useTheme();
+  const { confirm } = useIosAlert();
   const [showDropdown, setShowDropdown] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
+
+  const handleLogout = async () => {
+    setShowDropdown(false);
+    const ok = await confirm({
+      icon: 'warning',
+      title: '¿Cerrar sesión?',
+      message: 'Vas a salir de tu cuenta y tendrás que volver a ingresar tus credenciales.',
+      confirmText: 'Cerrar sesión',
+      destructive: true,
+    });
+    if (ok) logout();
+  };
 
   return (
     <header className="bg-ios-surface/60 backdrop-blur-2xl border-b border-ios-separator/40 px-4 sm:px-6 py-2.5 flex items-center justify-between z-10 shrink-0">
@@ -54,7 +68,7 @@ const Navbar = () => {
                   </div>
                   <div className="h-px bg-ios-separator/40 my-1" />
                   <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[15px] text-ios-red rounded-xl hover:bg-ios-red/10 transition-colors font-medium"
                   >
                     <IconLogout className="w-[18px] h-[18px]" strokeWidth={1.8} />
