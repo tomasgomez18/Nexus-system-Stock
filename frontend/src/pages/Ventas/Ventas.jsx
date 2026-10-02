@@ -457,7 +457,15 @@ const Ventas = () => {
     </div>
   );
 
-  if (loading && activeTab === 'ventas' && !ticketModal && !returnSale && !withdrawalOpen) {
+  // La pestaña de gráficos es solo para admin: para el resto cae siempre en Ventas.
+  const tabEfectiva = !esAdmin && activeTab === 'graficos' ? 'ventas' : activeTab;
+  const opcionesTab = [
+    { value: 'ventas', label: 'Ventas' },
+    ...(esAdmin ? [{ value: 'graficos', label: 'Gráficos' }] : []),
+    { value: 'cierres', label: 'Cierres' },
+  ];
+
+  if (loading && tabEfectiva === 'ventas' && !ticketModal && !returnSale && !withdrawalOpen) {
     return <LoadingSpinner />;
   }
 
@@ -471,8 +479,8 @@ const Ventas = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <IosSegmented
-          options={[{ value: 'ventas', label: 'Ventas' }, { value: 'graficos', label: 'Gráficos' }, { value: 'cierres', label: 'Cierres' }]}
-          value={activeTab}
+          options={opcionesTab}
+          value={tabEfectiva}
           onChange={setActiveTab}
           className="w-full sm:w-auto"
         />
@@ -538,7 +546,7 @@ const Ventas = () => {
         </div>
       </div>
 
-      {activeTab === 'ventas' ? (
+      {tabEfectiva === 'ventas' ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 [&>*]:min-w-0">
             <div className="relative overflow-hidden rounded-3xl border border-ios-separator/30 bg-gradient-to-b from-ios-surface2/80 to-ios-surface p-5 shadow-ios-card">
@@ -872,7 +880,7 @@ const Ventas = () => {
             )}
           </div>
         </>
-      ) : activeTab === 'graficos' ? (
+      ) : tabEfectiva === 'graficos' ? (
         <>
           {filtroFechas}
           <Suspense fallback={<LoadingSpinner />}>
