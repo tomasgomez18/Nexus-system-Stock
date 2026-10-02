@@ -648,7 +648,7 @@ const Productos = () => {
                   <IconX className="w-5 h-5" />
                 </button>
               </div>
-              <div className="flex items-center gap-2 sm:ml-auto shrink-0 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-2 sm:ml-auto w-full sm:w-auto">
                 <input
                   type="text" inputMode="numeric"
                   value={item.cantidad}
@@ -656,16 +656,16 @@ const Productos = () => {
                     const v = e.target.value;
                     if (v === '' || /^\d+$/.test(v)) updateCartItem(idx, 'cantidad', v);
                   }}
-                  className="w-16 px-2 py-1.5 text-center bg-ios-surface2 rounded-lg text-ios-label text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-14 sm:w-16 px-2 py-1.5 text-center bg-ios-surface2 rounded-lg text-ios-label text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="text-ios-tertiary">×</span>
-                <span className="w-24 px-2 py-1.5 text-right text-ios-label text-sm font-medium">
+                <span className="w-20 sm:w-24 px-2 py-1.5 text-right text-ios-label text-sm font-medium truncate">
                   {item.precioOriginal ? (
                     <span className="text-ios-tertiary line-through mr-1 text-xs">{formatMoney(item.precioOriginal)}</span>
                   ) : null}
                   {formatMoney(item.precio)}
                 </span>
-                <span className="text-ios-tertiary text-xs font-medium w-20 text-right">
+                <span className="w-16 sm:w-20 text-ios-tertiary text-xs font-medium text-right truncate">
                   {formatMoney(item.precio * (Number(item.cantidad) || 0))}
                 </span>
                 <button
@@ -716,12 +716,12 @@ const Productos = () => {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-center gap-2.5 cursor-pointer select-none">
                 <IosToggle checked={sellSplit} onChange={toggleSplit} />
                 <span className="text-sm text-ios-secondary font-medium">Dividir pago</span>
               </label>
-              <span className="text-sm text-ios-tertiary">
+              <span className="text-sm text-ios-tertiary min-w-0 truncate">
                 Monto: <span className="text-ios-label font-semibold">{formatMoney(sellMonto1)}</span>
               </span>
             </div>
