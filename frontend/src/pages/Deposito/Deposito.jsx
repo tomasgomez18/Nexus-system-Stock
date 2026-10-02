@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { obtenerProductos, crearProducto, actualizarProducto, eliminarProducto, addDeposito, reponerStock, pasarSalon } from '../../api/productos';
 import { obtenerMovimientosStock } from '../../api/movimientosStock';
-import { obtenerPromociones, crearPromocion, cancelarPromocion } from '../../api/promociones';
+import { obtenerPromociones, crearPromocion, cancelarPromocion, eliminarPromocion } from '../../api/promociones';
 import { obtenerMensajeErrorApi } from '../../utils/apiError';
 import { printLabel } from '../../utils/printLabel';
 import { formatDate, formatMoney } from '../../utils/format';
 import { precioVigente, tieneOferta, etiquetaOferta } from '../../utils/precios';
-import { LIMITE_PRODUCTOS, depositoTotal, salonTotal, variantLabel, paramsProductos } from '../../utils/productos';
+import { depositoTotal, salonTotal, variantLabel, paramsProductos } from '../../utils/productos';
+import { calcularPagina } from '../../utils/paginacion';
 import { useApi } from '../../hooks/useApi';
 import { useCategorias } from '../../hooks/useCategorias';
 import { useDropdownAnclado } from '../../hooks/useDropdownAnclado';
@@ -23,6 +24,8 @@ import { IosField, IosInput, IosSelect } from '../../components/ui/IosForm';
 import FormularioProducto from '../../components/FormularioProducto/FormularioProducto';
 import FiltroCategorias from '../../components/FiltroCategorias/FiltroCategorias';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import Paginacion from '../../components/common/Paginacion';
+import AvisoPromociones from '../../components/Promociones/AvisoPromociones';
 import { IconArrowUp, IconChevronDown, IconHistory, IconPencil, IconPlus, IconPrint, IconRefresh, IconTrash, IconWarehouse, IconTag, IconCheck, IconClock, IconX } from '../../components/ui/icons';
 
 const TIPOS = {
@@ -71,6 +74,8 @@ const Deposito = () => {
   const [searchDebounced, setSearchDebounced] = useState('');
   const [categoriaActiva, setCategoriaActiva] = useState('');
   const [soloConStock, setSoloConStock] = useState(false);
+  const [stockPagina, setStockPagina] = useState(1);
+  const [stockPorPagina, setStockPorPagina] = useState(25);
   const [expandedId, setExpandedId] = useState(null);
   const { dropdown, menuRef: dropdownRef, toggle: openDropdown, close: cerrarDropdown } = useDropdownAnclado();
 
@@ -107,6 +112,7 @@ const Deposito = () => {
 
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [seleccionados, setSeleccionados] = useState(() => new Set());
+  const [todosSel, setTodosSel] = useState(false);
   const [showPromo, setShowPromo] = useState(false);
   const [promoSaving, setPromoSaving] = useState(false);
   const [showOfertas, setShowOfertas] = useState(false);
@@ -123,10 +129,22 @@ const Deposito = () => {
   const { categorias, recargarCategorias } = useCategorias();
   const productosApi = useApi(
     async () => {
-      const res = await obtenerProductos(paramsProductos({ search: searchDebounced, categoria: categoriaActiva }));
-      return Array.isArray(res.data) ? res.data : [];
+      const res = await obtenerProductos({
+        ...paramsProductos({ search: searchDebounced, categoria: categoriaActiva }),
+        soloDeposito: soloConStock ? 1 : undefined,
+        offset: (stockPagina - 1) * stockPorPagina,
+        limit: stockPorPagina,
+        conTotal: 1,
+        conMetricas: 1,
+      });
+      const lista = Array.isArray(res.data?.productos) ? res.data.productos : [];
+      return {
+        lista,
+        total: Number(res.data?.total) || 0,
+        metricas: res.data?.metricas || { valorDeposito: 0, bajosSalon: 0 },
+      };
     },
-    { deps: [searchDebounced, categoriaActiva], mensajeError: 'Error al cargar productos' }
+    { deps: [searchDebounced, categoriaActiva, soloConStock, stockPagina, stockPorPagina], mensajeError: 'Error al cargar productos' }
   );
 
   const movimientosApi = useApi(
@@ -146,7 +164,10 @@ const Deposito = () => {
 
   const { run: recargarProductos, loading, error } = productosApi;
   const { run: recargarMovimientos, loading: movLoading, error: movError } = movimientosApi;
-  const productos = productosApi.data || [];
+  const productos = productosApi.error ? [] : productosApi.data?.lista || [];
+  const totalProductos = productosApi.error ? 0 : productosApi.data?.total || 0;
+  const metricas = productosApi.data?.metricas || { valorDeposito: 0, bajosSalon: 0 };
+  const { totalPaginas } = calcularPagina(totalProductos, stockPorPagina, stockPagina);
   const movimientos = movimientosApi.error ? [] : movimientosApi.data?.lista || [];
   const movHayMas = !movimientosApi.error && Boolean(movimientosApi.data?.hayMas);
 
@@ -194,6 +215,18 @@ const Deposito = () => {
     const timer = setTimeout(() => setSearchDebounced(search), search.trim() ? 300 : 0);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    setStockPagina(1);
+  }, [searchDebounced, categoriaActiva, soloConStock]);
+
+  useEffect(() => {
+    if (stockPagina > totalPaginas) setStockPagina(totalPaginas);
+  }, [stockPagina, totalPaginas]);
+
+  useEffect(() => {
+    setTodosSel(false);
+  }, [searchDebounced, categoriaActiva, soloConStock]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMovBuscarDebounced(movBuscar), movBuscar.trim() ? 300 : 0);
@@ -465,13 +498,8 @@ const Deposito = () => {
     }
   };
 
-  const filtrados = productos.filter((p) => {
-    if (soloConStock && depositoTotal(p) <= 0) return false;
-    return true;
-  });
-
-  const valorDeposito = filtrados.reduce((s, p) => s + depositoTotal(p) * (Number(p.precio) || 0), 0);
-  const bajosSalon = filtrados.filter((p) => salonTotal(p) <= (p.stockMinimo ?? 0)).length;
+  const valorDeposito = metricas.valorDeposito;
+  const bajosSalon = metricas.bajosSalon;
 
   const badgeSalon = (p) => {
     const minimo = p.stockMinimo ?? 0;
@@ -512,23 +540,47 @@ const Deposito = () => {
       </div>
     ) : null;
 
-  const todosSeleccionados = filtrados.length > 0 && filtrados.every((p) => seleccionados.has(p._id));
+  const todosSeleccionados = todosSel;
 
   const toggleSeleccion = (id) => {
+    const estaba = seleccionados.has(id);
     setSeleccionados((prev) => {
       const copia = new Set(prev);
       if (copia.has(id)) copia.delete(id);
       else copia.add(id);
       return copia;
     });
+    if (estaba) setTodosSel(false);
   };
 
-  const toggleTodos = () =>
-    setSeleccionados(todosSeleccionados ? new Set() : new Set(filtrados.map((p) => p._id)));
+  const toggleTodos = async () => {
+    if (todosSel) {
+      setSeleccionados(new Set());
+      setTodosSel(false);
+      return;
+    }
+    try {
+      const res = await obtenerProductos({
+        ...paramsProductos({ search: searchDebounced, categoria: categoriaActiva }),
+        soloDeposito: soloConStock ? 1 : undefined,
+        soloIds: 1,
+      });
+      const ids = Array.isArray(res.data?.ids) ? res.data.ids : [];
+      setSeleccionados(new Set(ids));
+      setTodosSel(ids.length > 0);
+    } catch (err) {
+      alert({
+        icon: 'error',
+        title: 'Error',
+        message: obtenerMensajeErrorApi(err, 'No se pudieron seleccionar los productos'),
+      });
+    }
+  };
 
   const salirModoSeleccion = () => {
     setModoSeleccion(false);
     setSeleccionados(new Set());
+    setTodosSel(false);
   };
 
   const abrirPromo = () => {
@@ -703,12 +755,6 @@ const Deposito = () => {
             className="mb-4"
           />
 
-          {productos.length >= LIMITE_PRODUCTOS && (
-            <div className="mb-4 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-ios-control text-amber-400 text-sm font-medium">
-              Se muestran los primeros {LIMITE_PRODUCTOS} productos. Usá la búsqueda para encontrar el resto.
-            </div>
-          )}
-
           <div className="mb-4 flex items-center gap-4 flex-wrap text-xs text-ios-tertiary">
             <span>
               Valor en depósito: <span className="text-ios-label font-semibold">{formatMoney(valorDeposito)}</span>
@@ -726,7 +772,7 @@ const Deposito = () => {
 
           {loading ? (
             <LoadingSpinner />
-          ) : filtrados.length === 0 ? (
+          ) : productos.length === 0 ? (
             <div className="bg-ios-surface border border-ios-separator/30 rounded-3xl py-14 flex flex-col items-center shadow-ios-card">
               <div className="w-16 h-16 bg-ios-surface2 rounded-full flex items-center justify-center mb-4 border border-ios-separator/40">
                 <IconWarehouse className="w-7 h-7 text-ios-tertiary" strokeWidth={1.5} />
@@ -777,7 +823,7 @@ const Deposito = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtrados.map((p) => (
+                    {productos.map((p) => (
                       <tr
                         key={p._id}
                         onClick={() => setExpandedId(expandedId === p._id ? null : p._id)}
@@ -853,7 +899,7 @@ const Deposito = () => {
               </div>
 
               <div className="md:hidden space-y-2.5">
-                {filtrados.map((p) => (
+                {productos.map((p) => (
                   <div key={p._id} className="bg-ios-surface border border-ios-separator/30 rounded-2xl px-4 py-3.5 shadow-ios-card">
                     <div className="flex items-start justify-between gap-2">
                       <button
@@ -920,6 +966,21 @@ const Deposito = () => {
                 ))}
               </div>
             </>
+          )}
+
+          {totalProductos > 0 && (
+            <Paginacion
+              pagina={stockPagina}
+              porPagina={stockPorPagina}
+              total={totalProductos}
+              onPagina={setStockPagina}
+              onPorPagina={(n) => {
+                setStockPorPagina(n);
+                setStockPagina(1);
+              }}
+              deshabilitado={loading}
+              className="mt-4"
+            />
           )}
         </>
       )}

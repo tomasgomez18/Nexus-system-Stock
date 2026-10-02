@@ -11,12 +11,15 @@ import { obtenerVentas as obtenerTickets } from '../../api/ventas';
 import { obtenerMensajeErrorApi } from '../../utils/apiError';
 import { formatMoney, formatDate } from '../../utils/format';
 import { precioVigente, tieneOferta, etiquetaOferta } from '../../utils/precios';
-import { LIMITE_PRODUCTOS, depositoTotal, variantShortLabel, tieneStockBajo, soloEnDeposito, paramsProductos } from '../../utils/productos';
+import { depositoTotal, variantShortLabel, tieneStockBajo, soloEnDeposito, paramsProductos } from '../../utils/productos';
+import { calcularPagina } from '../../utils/paginacion';
 import { useApi } from '../../hooks/useApi';
 import { useCategorias } from '../../hooks/useCategorias';
 import { useDropdownAnclado } from '../../hooks/useDropdownAnclado';
 import { escucharPush } from '../../services/GestorPush';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import Paginacion from '../../components/common/Paginacion';
+import AvisoPromociones from '../../components/Promociones/AvisoPromociones';
 import ScannerButton from '../../components/scanner/ScannerButton';
 import ScannerModal from '../../components/scanner/ScannerModal';
 import FormularioDevolucion from '../../components/FormularioDevolucion/FormularioDevolucion';
@@ -47,6 +50,8 @@ const Productos = () => {
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
   const [categoriaActiva, setCategoriaActiva] = useState('');
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(25);
   const { dropdown, menuRef: dropdownRef, toggle: toggleDropdown, close: closeDropdown } = useDropdownAnclado();
   const returnSeqRef = useRef(0);
 
@@ -111,11 +116,16 @@ const Productos = () => {
   const { categorias, recargarCategorias } = useCategorias();
   const productosApi = useApi(
     async () => {
-      const prodRes = await obtenerProductos(paramsProductos({ search: searchDebounced, categoria: categoriaActiva }));
-      const lista = Array.isArray(prodRes.data) ? prodRes.data : [];
-      return { lista, tope: lista.length >= LIMITE_PRODUCTOS };
+      const prodRes = await obtenerProductos({
+        ...paramsProductos({ search: searchDebounced, categoria: categoriaActiva }),
+        offset: (pagina - 1) * porPagina,
+        limit: porPagina,
+        conTotal: 1,
+      });
+      const lista = Array.isArray(prodRes.data?.productos) ? prodRes.data.productos : [];
+      return { lista, total: Number(prodRes.data?.total) || 0 };
     },
-    { deps: [searchDebounced, categoriaActiva], mensajeError: 'Error al cargar productos' }
+    { deps: [searchDebounced, categoriaActiva, pagina, porPagina], mensajeError: 'Error al cargar productos' }
   );
   const lowStockApi = useApi(
     async () => {
@@ -128,8 +138,17 @@ const Productos = () => {
   const { run: recargarProductos, loading, error } = productosApi;
   const { run: recargarLowStock, error: lowStockError } = lowStockApi;
   const products = productosApi.error ? [] : productosApi.data?.lista || [];
-  const topeAlcanzado = !productosApi.error && Boolean(productosApi.data?.tope);
+  const totalProductos = productosApi.error ? 0 : productosApi.data?.total || 0;
+  const { totalPaginas } = calcularPagina(totalProductos, porPagina, pagina);
   const lowStock = lowStockApi.data || [];
+
+  useEffect(() => {
+    setPagina(1);
+  }, [searchDebounced, categoriaActiva]);
+
+  useEffect(() => {
+    if (pagina > totalPaginas) setPagina(totalPaginas);
+  }, [pagina, totalPaginas]);
 
   const agotados = lowStock.filter((i) => i.cantidad === 0);
   const bajos = lowStock.filter((i) => i.cantidad > 0);
@@ -856,12 +875,6 @@ const Productos = () => {
         </div>
       )}
 
-      {topeAlcanzado && !search && (
-        <div className="mb-4 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-ios-control text-amber-300 text-sm font-medium">
-          Se muestran los primeros {LIMITE_PRODUCTOS} productos. Usá la búsqueda para encontrar el resto.
-        </div>
-      )}
-
       {loading ? (
         <LoadingSpinner />
       ) : (
@@ -1130,6 +1143,21 @@ const Productos = () => {
             ))
           )}
         </div>
+      )}
+
+      {totalProductos > 0 && (
+        <Paginacion
+          pagina={pagina}
+          porPagina={porPagina}
+          total={totalProductos}
+          onPagina={setPagina}
+          onPorPagina={(n) => {
+            setPorPagina(n);
+            setPagina(1);
+          }}
+          deshabilitado={loading}
+          className="mt-4"
+        />
       )}
 
       {dropdown.product && (

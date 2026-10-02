@@ -1,5 +1,3 @@
-export const LIMITE_PRODUCTOS = 1000;
-
 export const paramsProductos = ({ search, categoria } = {}) => {
   const params = {};
   const term = String(search ?? '').trim();
