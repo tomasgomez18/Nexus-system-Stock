@@ -73,20 +73,23 @@ código `3221225781` / `0xC0000135`, instalalo desde https://aka.ms/vs/17/releas
 
 ## Caja del día
 
-La caja funciona con **una apertura y un cierre por día**:
+La caja funciona con **una apertura por turno y cierres por turno (mañana, tarde o día completo)**:
 
 - **Abrir caja** (cualquier usuario): pide el nombre de quien abre y, opcionalmente, el fondo
   inicial (la plata que ya hay en la caja). Sin caja abierta **no se puede vender, devolver,
-  cambiar ni retirar efectivo**.
-- **Cerrar caja**: pide el nombre de quien cierra, muestra un resumen previo y al confirmar guarda
-  los totales y **envía el mail del día** (apertura y cierre con nombres y horarios, totales por
-  método, unidades, devoluciones, retiros, reintegros y efectivo esperado). El cierre es atómico:
-  reclama la caja y **mientras se está cerrando no se puede vender, retirar ni borrar operaciones**
-  (si el servidor se cae a mitad del cierre, al reintentar el cierre se reanuda solo). El
-  **efectivo esperado** queda guardado en el cierre, así el historial no lo recalcula.
-- **Reabrir caja** (solo admin): si la caja de hoy ya fue cerrada, el admin puede reabrirla las
-  veces que necesite, cargando su nombre. Cada reapertura queda registrada y al volver a cerrar se
-  recalculan los totales y se envía un mail actualizado ("Caja reabierta · actualizado").
+  cambiar ni retirar efectivo**. Después de cerrar la mañana se puede abrir una caja nueva para la
+  tarde; no se puede abrir una tercera caja si ya se cerraron mañana y tarde.
+- **Cerrar caja**: pide el nombre de quien cierra, el **turno** (Mañana, Tarde o Día completo) y
+  muestra un resumen previo. Al confirmar guarda los totales y **envía el mail del turno**
+  (apertura y cierre con nombres y horarios, totales por método, unidades, devoluciones, retiros,
+  reintegros y efectivo esperado). El cierre es atómico: reclama la caja y **mientras se está
+  cerrando no se puede vender, retirar ni borrar operaciones** (si el servidor se cae a mitad del
+  cierre, al reintentar el cierre se reanuda solo). El **efectivo esperado** queda guardado en el
+  cierre, así el historial no lo recalcula.
+- **Reporte del total del día**: al cerrar el turno **Tarde** se puede pedir (activado por defecto)
+  un correo adicional con el día completo: totales, retiros, devoluciones, reintegros, cobros de
+  cuenta corriente, efectivo esperado, **desglose por turno** y el listado de ventas del día. Se
+  puede reenviar desde el historial de Cierres (fila agrupada por día).
 - **Caja de un día anterior**: si quedó una caja abierta, vender, devolver, cambiar y retirar
   quedan bloqueados hasta cerrarla (el aviso indica la fecha). La caja se cierra con aviso si es de
   un día anterior.
@@ -94,9 +97,9 @@ La caja funciona con **una apertura y un cierre por día**:
   retiros se lleva **por caja** (no por día), así no depende de la zona horaria del navegador y no
   se puede retirar de más con operaciones simultáneas.
 - El historial de Cierres muestra solo cajas cerradas, con estado, quién abrió/cerró y los totales.
-  Los cierres viejos (mañana/tarde) se siguen viendo igual.
+  La vista por día agrupa mañana y tarde con el total del día.
 - Endpoints: `POST /api/ventas/caja/abrir`, `GET /api/ventas/caja/abierta`,
-  `POST /api/ventas/caja/cerrar` y `POST /api/ventas/caja/reabrir` (admin).
+  `POST /api/ventas/caja/cerrar` y `POST /api/ventas/cierres-caja/reporte-dia` (admin).
 
 ## Sesiones y seguridad
 
