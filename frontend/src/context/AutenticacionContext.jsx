@@ -42,8 +42,8 @@ export const AutenticacionProvider = ({ children }) => {
         });
       }
     };
-    window.addEventListener('auth-unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
+    window.addEventListener('authUnauthorized', handleUnauthorized);
+    return () => window.removeEventListener('authUnauthorized', handleUnauthorized);
   }, [clearSession, toast, show]);
 
   useEffect(() => {
