@@ -6,7 +6,8 @@ import Producto from '../modules/Producto/ProductoModel.js';
 import Promocion from '../modules/Promocion/PromocionModel.js';
 import { crearVenta, abrirCaja } from '../modules/Venta/VentaController.js';
 import { obtenerProductos, obtenerProducto } from '../modules/Producto/ProductoController.js';
-import { crearPromocion, cancelarPromocion, obtenerPromociones } from '../modules/Promocion/PromocionController.js';
+import { crearPromocion, cancelarPromocion, eliminarPromocion, obtenerPromociones, obtenerPromocionesVigentes, obtenerProductosDePromocion } from '../modules/Promocion/PromocionController.js';
+import promocionRoutes from '../modules/Promocion/PromocionRoutes.js';
 
 before(async () => {
   await startTestDB();
@@ -202,4 +203,163 @@ test('el listado de promociones devuelve estado y alcance', async () => {
   assert.equal(res.body[0].estado, 'activa');
   assert.equal(res.body[0].cantidadProductos, 1);
   assert.equal(res.body[0].creadoPor, 'Admin');
+});
+
+test('obtenerPromocionesVigentes lista activas y programadas, sin canceladas ni vencidas', async () => {
+  const ahora = Date.now();
+  const activo = await crearProducto({ nombre: 'Activo' });
+  const programado = await crearProducto({ nombre: 'Programado' });
+  const cancelado = await crearProducto({ nombre: 'Cancelado' });
+  const vencido = await crearProducto({ nombre: 'Vencido' });
+
+  await crearPromo({ nombre: 'Activa', productos: [String(activo._id)] });
+  await crearPromo({
+    nombre: 'Programada',
+    desde: new Date(ahora + 3600000).toISOString(),
+    hasta: new Date(ahora + 7200000).toISOString(),
+    productos: [String(programado._id)],
+  });
+  const paraCancelar = await crearPromo({ nombre: 'Cancelada', productos: [String(cancelado._id)] });
+  await runHandler(cancelarPromocion, { params: { id: String(paraCancelar.body._id) }, usuario: admin });
+  await crearPromo({
+    nombre: 'Vencida',
+    desde: new Date(ahora - 7200000).toISOString(),
+    hasta: new Date(ahora - 3600000).toISOString(),
+    productos: [String(vencido._id)],
+  });
+
+  const res = await runHandler(obtenerPromocionesVigentes, { usuario: admin });
+  assert.equal(res.status, 200);
+  assert.ok(res.body.ahora, 'devuelve la hora del servidor para el cronómetro');
+  const nombres = res.body.promociones.map((p) => p.nombre).sort();
+  assert.deepEqual(nombres, ['Activa', 'Programada']);
+
+  const activa = res.body.promociones.find((p) => p.nombre === 'Activa');
+  assert.equal(activa.estado, 'activa');
+  assert.equal(activa.cantidadProductos, 1);
+  assert.equal(activa.todos, false);
+
+  const programada = res.body.promociones.find((p) => p.nombre === 'Programada');
+  assert.equal(programada.estado, 'programada');
+});
+
+test('la ruta /promociones/vigentes se registra antes del middleware admin', () => {
+  const capas = promocionRoutes.stack;
+  const indiceVigentes = capas.findIndex((c) => c.route?.path === '/vigentes');
+  const indiceAdmin = capas.findIndex((c) => c.handle?.name === 'admin');
+  assert.ok(indiceVigentes !== -1, 'la ruta /vigentes existe');
+  assert.ok(indiceAdmin !== -1, 'el middleware admin existe');
+  assert.ok(indiceVigentes < indiceAdmin, 'vigentes queda accesible para usuarios no admin');
+});
+
+test('obtenerProductosDePromocion devuelve solo los productos de la promo', async () => {
+  const incluido = await crearProducto({ nombre: 'Incluido' });
+  await crearProducto({ nombre: 'Fuera' });
+  const promo = await crearPromo({ productos: [String(incluido._id)] });
+
+  const res = await runHandler(obtenerProductosDePromocion, {
+    params: { id: String(promo.body._id) },
+    usuario: admin,
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.total, 1);
+  assert.equal(res.body.vigente, true);
+  assert.equal(res.body.productos.length, 1);
+  assert.equal(res.body.productos[0].nombre, 'Incluido');
+  assert.equal(res.body.productos[0].precioOferta, 8000);
+  assert.equal(res.body.productos[0].cantidad, 50);
+});
+
+test('obtenerProductosDePromocion con todos devuelve el catálogo completo', async () => {
+  await crearProducto({ nombre: 'A' });
+  await crearProducto({ nombre: 'B' });
+  const promo = await crearPromo({ todos: true, productos: [] });
+
+  const res = await runHandler(obtenerProductosDePromocion, {
+    params: { id: String(promo.body._id) },
+    usuario: admin,
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.total, 2);
+});
+
+test('obtenerProductosDePromocion pagina y valida el id', async () => {
+  const a = await crearProducto({ nombre: 'A' });
+  const b = await crearProducto({ nombre: 'B' });
+  const c = await crearProducto({ nombre: 'C' });
+  const promo = await crearPromo({ productos: [String(a._id), String(b._id), String(c._id)] });
+
+  const pagina = await runHandler(obtenerProductosDePromocion, {
+    params: { id: String(promo.body._id) },
+    query: { offset: '1', limit: '1' },
+    usuario: admin,
+  });
+  assert.equal(pagina.status, 200);
+  assert.equal(pagina.body.total, 3);
+  assert.deepEqual(pagina.body.productos.map((p) => p.nombre), ['B']);
+
+  const invalido = await runHandler(obtenerProductosDePromocion, { params: { id: 'no-es-id' }, usuario: admin });
+  assert.equal(invalido.status, 404);
+
+  const inexistente = await runHandler(obtenerProductosDePromocion, {
+    params: { id: '507f1f77bcf86cd799439011' },
+    usuario: admin,
+  });
+  assert.equal(inexistente.status, 404);
+});
+
+test('obtenerProductosDePromocion muestra el precio futuro en una promo programada', async () => {
+  const ahora = Date.now();
+  const producto = await crearProducto({ nombre: 'Programado', precio: 10000 });
+  const promo = await crearPromo({
+    desde: new Date(ahora + 3600000).toISOString(),
+    hasta: new Date(ahora + 7200000).toISOString(),
+    productos: [String(producto._id)],
+  });
+
+  const res = await runHandler(obtenerProductosDePromocion, {
+    params: { id: String(promo.body._id) },
+    usuario: admin,
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.vigente, false);
+  assert.equal(res.body.productos[0].precio, 10000);
+  assert.equal(res.body.productos[0].precioOferta, 8000);
+});
+
+test('eliminar una promoción la quita del historial', async () => {
+  const producto = await crearProducto();
+  const promo = await crearPromo({ productos: [String(producto._id)] });
+  await runHandler(cancelarPromocion, { params: { id: String(promo.body._id) }, usuario: admin });
+
+  const borrado = await runHandler(eliminarPromocion, { params: { id: String(promo.body._id) }, usuario: admin });
+  assert.equal(borrado.status, 200);
+
+  const listado = await runHandler(obtenerPromociones, { usuario: admin });
+  assert.equal(listado.body.length, 0);
+});
+
+test('eliminar una promoción activa devuelve los precios normales', async () => {
+  const producto = await crearProducto({ precio: 10000 });
+  const promo = await crearPromo({ productos: [String(producto._id)] });
+
+  const conOferta = await runHandler(obtenerProductos, { usuario: admin });
+  assert.equal(conOferta.body[0].oferta.precioOferta, 8000);
+
+  const borrado = await runHandler(eliminarPromocion, { params: { id: String(promo.body._id) }, usuario: admin });
+  assert.equal(borrado.status, 200);
+
+  const sinOferta = await runHandler(obtenerProductos, { usuario: admin });
+  assert.equal(sinOferta.body[0].oferta, null);
+});
+
+test('eliminar una promoción inexistente o inválida se rechaza', async () => {
+  const invalido = await runHandler(eliminarPromocion, { params: { id: 'no-es-id' }, usuario: admin });
+  assert.equal(invalido.status, 400);
+
+  const inexistente = await runHandler(eliminarPromocion, {
+    params: { id: '507f1f77bcf86cd799439011' },
+    usuario: admin,
+  });
+  assert.equal(inexistente.status, 404);
 });
