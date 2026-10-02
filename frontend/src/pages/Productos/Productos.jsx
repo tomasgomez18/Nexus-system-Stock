@@ -533,6 +533,8 @@ const Productos = () => {
         className="mb-4"
       />
 
+      <AvisoPromociones onExpirar={recargarProductos} className="mb-4" />
+
       <IosModal
         open={!!quickAdd}
         onClose={() => setQuickAdd(null)}

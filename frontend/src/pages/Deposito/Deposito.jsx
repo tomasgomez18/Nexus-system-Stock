@@ -63,6 +63,8 @@ const isoLocalParaInput = (fecha) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
+const avisarPromosActualizadas = () => window.dispatchEvent(new CustomEvent('promosActualizadas'));
+
 const Deposito = () => {
   const { esAdmin } = useAutenticacion();
   const { show: alert, confirm, toast } = useIosAlert();
@@ -634,6 +636,7 @@ const Deposito = () => {
       setShowPromo(false);
       salirModoSeleccion();
       recargarProductos();
+      avisarPromosActualizadas();
     } catch (err) {
       alert({ icon: 'error', title: 'No se pudo crear', message: obtenerMensajeErrorApi(err, 'Error al crear la promoción') });
     } finally {
@@ -704,6 +707,8 @@ const Deposito = () => {
           </button>
         </div>
       </div>
+
+      <AvisoPromociones onExpirar={recargarProductos} className="mb-4" />
 
       <div className="flex items-center gap-2 mb-4">
         <button
