@@ -149,6 +149,14 @@ const Empleados = () => {
   const handleGuardarClave = async (e) => {
     e.preventDefault();
     if (guardandoClave) return;
+    const ok = await confirmar({
+      icon: 'warning',
+      title: '¿Reiniciar la contraseña?',
+      message: `El empleado "${reiniciando.nombre}" deberá ingresar con la nueva clave.`,
+      confirmText: 'Reiniciar',
+      destructive: true,
+    });
+    if (!ok) return;
     setGuardandoClave(true);
     try {
       await reiniciarClave(reiniciando._id, claveNueva);
