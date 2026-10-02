@@ -64,6 +64,15 @@ const Proveedores = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (saving) return;
+    if (editing) {
+      const ok = await confirm({
+        icon: 'warning',
+        title: '¿Guardar cambios del proveedor?',
+        message: `Se van a sobrescribir los datos guardados de "${editing.nombre}".`,
+        confirmText: 'Guardar',
+      });
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       if (editing) {
