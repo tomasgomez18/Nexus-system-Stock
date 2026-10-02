@@ -373,6 +373,13 @@ const Ventas = () => {
   };
 
   const handleResendCloseMail = async (id) => {
+    const ok = await confirm({
+      icon: 'warning',
+      title: '¿Reenviar el correo del cierre?',
+      message: 'Se enviará de nuevo el resumen del cierre de caja por correo.',
+      confirmText: 'Reenviar',
+    });
+    if (!ok) return;
     setResendingId(id);
     try {
       await reenviarCorreoCierre(id);
