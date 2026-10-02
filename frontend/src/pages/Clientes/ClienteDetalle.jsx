@@ -238,6 +238,15 @@ const ClienteDetalle = ({ cliente, open, onClose, onCambio }) => {
       });
       return;
     }
+    if (editando) {
+      const ok = await confirm({
+        icon: 'warning',
+        title: '¿Guardar cambios del pago?',
+        message: `Se va a sobrescribir el pago de ${formatMoney(Number(editando.monto) || 0)} registrado el ${formatFechaMovimiento(editando.fecha)}.`,
+        confirmText: 'Guardar',
+      });
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       const payload = {
