@@ -194,6 +194,81 @@ test('obtenerProductos filtra por categoría exacta sin distinguir mayúsculas',
   assert.equal(res.body[0].categoria, 'Perro');
 });
 
+test('obtenerProductos pagina con offset, limit y total', async () => {
+  await Producto.create([
+    { nombre: 'A', precio: 100, cantidad: 0, categoria: 'Ropa' },
+    { nombre: 'B', precio: 100, cantidad: 0, categoria: 'Ropa' },
+    { nombre: 'C', precio: 100, cantidad: 0, categoria: 'Ropa' },
+    { nombre: 'D', precio: 100, cantidad: 0, categoria: 'Ropa' },
+    { nombre: 'E', precio: 100, cantidad: 0, categoria: 'Ropa' },
+  ]);
+
+  const pagina1 = await runHandler(obtenerProductos, { query: { offset: '0', limit: '2', conTotal: '1' } });
+  assert.equal(pagina1.status, 200);
+  assert.equal(pagina1.body.total, 5);
+  assert.deepEqual(pagina1.body.productos.map((p) => p.nombre), ['A', 'B']);
+
+  const pagina2 = await runHandler(obtenerProductos, { query: { offset: '2', limit: '2', conTotal: '1' } });
+  assert.deepEqual(pagina2.body.productos.map((p) => p.nombre), ['C', 'D']);
+  assert.equal(pagina2.body.total, 5);
+
+  const pagina3 = await runHandler(obtenerProductos, { query: { offset: '4', limit: '2', conTotal: '1' } });
+  assert.deepEqual(pagina3.body.productos.map((p) => p.nombre), ['E']);
+
+  const sinTotal = await runHandler(obtenerProductos, { query: { offset: '0', limit: '2' } });
+  assert.ok(Array.isArray(sinTotal.body), 'sin conTotal sigue devolviendo un array');
+  assert.equal(sinTotal.body.length, 2);
+});
+
+test('obtenerProductos filtra solo con depósito (variantes y producto simple)', async () => {
+  await Producto.create([
+    { nombre: 'Con variante', precio: 100, cantidad: 0, categoria: 'Ropa', variantes: [{ talle: 'M', color: '', cantidad: 0, deposito: 3 }] },
+    { nombre: 'Variante vacía', precio: 100, cantidad: 0, categoria: 'Ropa', variantes: [{ talle: 'L', color: '', cantidad: 2, deposito: 0 }] },
+    { nombre: 'Simple con depósito', precio: 100, cantidad: 0, deposito: 4, categoria: 'Ropa' },
+    { nombre: 'Simple sin depósito', precio: 100, cantidad: 0, deposito: 0, categoria: 'Ropa' },
+  ]);
+
+  const res = await runHandler(obtenerProductos, { query: { soloDeposito: '1' } });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body.map((p) => p.nombre), ['Con variante', 'Simple con depósito']);
+});
+
+test('obtenerProductos con metricas calcula valor de depósito y stock bajo en salón', async () => {
+  await Producto.create([
+    { nombre: 'A', precio: 100, cantidad: 0, deposito: 2, stockMinimo: 2, categoria: 'Ropa' },
+    {
+      nombre: 'B',
+      precio: 50,
+      cantidad: 0,
+      stockMinimo: 2,
+      categoria: 'Ropa',
+      variantes: [
+        { talle: 'M', color: '', cantidad: 5, deposito: 1 },
+        { talle: 'L', color: '', cantidad: 5, deposito: 1 },
+      ],
+    },
+    { nombre: 'C', precio: 999, cantidad: 0, deposito: 0, stockMinimo: 2, categoria: 'Ropa' },
+  ]);
+
+  const res = await runHandler(obtenerProductos, { query: { conTotal: '1', conMetricas: '1' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.total, 3);
+  assert.equal(res.body.metricas.valorDeposito, 300, '2×100 + 2×50');
+  assert.equal(res.body.metricas.bajosSalon, 2, 'A y C tienen salón por debajo del mínimo');
+});
+
+test('obtenerProductos con soloIds devuelve solo los IDs filtrados', async () => {
+  const creados = await Producto.create([
+    { nombre: 'A', precio: 100, cantidad: 0, categoria: 'Perro' },
+    { nombre: 'B', precio: 100, cantidad: 0, categoria: 'Gato' },
+  ]);
+
+  const res = await runHandler(obtenerProductos, { query: { categoria: 'perro', soloIds: '1' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.ids.length, 1);
+  assert.equal(String(res.body.ids[0]), String(creados[0]._id));
+});
+
 test('la ruta /categorias se registra antes de /:id', () => {
   const rutas = productoRoutes.stack.filter((capa) => capa.route).map((capa) => capa.route.path);
   assert.ok(rutas.includes('/categorias'));
