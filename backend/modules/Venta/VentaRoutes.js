@@ -14,7 +14,7 @@ router.get('/cierres-caja', obtenerCierresCaja);
 router.delete('/cierres-caja/:id', admin, eliminarCierreCaja);
 router.post('/cierres-caja/:id/reenviar-mail', admin, reenviarMailCierre);
 router.get('/stats', obtenerEstadisticasVentas);
-router.get('/analitica', obtenerAnaliticaVentas);
+router.get('/analitica', admin, obtenerAnaliticaVentas);
 router.get('/mas-vendidos', obtenerMasVendidos);
 router.get('/', obtenerVentas);
 if (process.env.NODE_ENV !== 'production') {
