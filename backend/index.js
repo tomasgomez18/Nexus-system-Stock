@@ -32,6 +32,7 @@ import Venta from './modules/Venta/VentaModel.js';
 import CierreCaja from './modules/Venta/CierreCajaModel.js';
 import CuotaCuentaCorriente from './modules/CuotaCuentaCorriente/CuotaCuentaCorrienteModel.js';
 import Promocion from './modules/Promocion/PromocionModel.js';
+import Producto from './modules/Producto/ProductoModel.js';
 import { asegurarNumerosTicket, migrarArticulosVenta } from './modules/Venta/VentaController.js';
 import { revisarCuotas, revisarCuotasSiCorresponde } from './modules/CuotaCuentaCorriente/CuotasService.js';
 import { limpiarSuscripcionesHuerfanas } from './services/PushService.js';
@@ -142,6 +143,7 @@ const inicializar = () => {
         await CierreCaja.init();
         await CuotaCuentaCorriente.init();
         await Promocion.init();
+        await Producto.init();
         const itemsMigrados = await migrarArticulosVenta();
         if (itemsMigrados > 0) logger.info(`Ventas legacy migradas al formato articulos[]: ${itemsMigrados}`);
         const migradas = await asegurarNumerosTicket();

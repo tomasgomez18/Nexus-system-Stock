@@ -71,6 +71,7 @@ productSchema.pre('save', function (next) {
 });
 
 productSchema.index({ nombre: 'text' });
+productSchema.index({ nombre: 1, _id: 1 });
 productSchema.index({ categoria: 1 });
 productSchema.index({ codigo: 1 }, { unique: true, sparse: true });
 

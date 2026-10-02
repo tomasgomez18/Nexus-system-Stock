@@ -83,6 +83,24 @@ const registrarMovimiento = async ({ producto, talle, color, tipo, cantidad, emp
   );
 };
 
+const depositoTotalExpr = {
+  $cond: [
+    { $gt: [{ $size: { $ifNull: ['$variantes', []] } }, 0] },
+    { $sum: '$variantes.deposito' },
+    { $ifNull: ['$deposito', 0] },
+  ],
+};
+
+const salonTotalExpr = {
+  $cond: [
+    { $gt: [{ $size: { $ifNull: ['$variantes', []] } }, 0] },
+    { $sum: '$variantes.cantidad' },
+    { $ifNull: ['$cantidad', 0] },
+  ],
+};
+
+const esVerdadero = (valor) => valor === '1' || valor === 'true';
+
 export const obtenerProductos = async (req, res, next) => {
   try {
     const { search, categoria } = req.query;
@@ -100,17 +118,56 @@ export const obtenerProductos = async (req, res, next) => {
     if (categoriaFiltro) {
       filter.categoria = { $regex: `^${escaparRegex(categoriaFiltro)}$`, $options: 'i' };
     }
+    if (esVerdadero(req.query.soloDeposito)) {
+      filter.$expr = { $gt: [depositoTotalExpr, 0] };
+    }
 
+    if (esVerdadero(req.query.soloIds)) {
+      const docs = await Producto.find(filter).select('_id').lean();
+      return res.json({ ids: docs.map((d) => d._id) });
+    }
+
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
     const limite = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 2000);
-    const products = await Producto.find(filter).sort({ nombre: 1 }).limit(limite);
-    const promociones = await promocionesVigentes();
+    const conTotal = esVerdadero(req.query.conTotal);
+    const conMetricas = esVerdadero(req.query.conMetricas);
 
-    res.json(
-      products.map((product) => ({
-        ...product.toJSON(),
-        oferta: ofertaDeProducto(product, promociones),
-      }))
-    );
+    const products = await Producto.find(filter).sort({ nombre: 1, _id: 1 }).skip(offset).limit(limite);
+    const promociones = await promocionesVigentes();
+    const mapeados = products.map((product) => ({
+      ...product.toJSON(),
+      oferta: ofertaDeProducto(product, promociones),
+    }));
+
+    if (!conTotal) {
+      return res.json(mapeados);
+    }
+
+    const total = await Producto.countDocuments(filter);
+    const respuesta = { productos: mapeados, total };
+
+    if (conMetricas) {
+      const [agregado] = await Producto.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            valorDepositoCentavos: {
+              $sum: { $multiply: [depositoTotalExpr, { $ifNull: ['$precio', 0] }] },
+            },
+            bajosSalon: {
+              $sum: { $cond: [{ $lte: [salonTotalExpr, { $ifNull: ['$stockMinimo', 0] }] }, 1, 0] },
+            },
+          },
+        },
+      ]);
+      respuesta.metricas = {
+        valorDeposito: Math.round(agregado?.valorDepositoCentavos || 0) / 100,
+        bajosSalon: agregado?.bajosSalon || 0,
+      };
+    }
+
+    res.json(respuesta);
   } catch (error) {
     next(error);
   }
