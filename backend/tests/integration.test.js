@@ -6,7 +6,7 @@ import { startTestDB, stopTestDB, clearDB, runHandler } from './helpers/db.js';
 import Producto from '../modules/Producto/ProductoModel.js';
 import MovimientoStock from '../modules/MovimientoStock/MovimientoStockModel.js';
 import Venta from '../modules/Venta/VentaModel.js';
-import { crearVenta, eliminarVenta, abrirCaja, cerrarCaja, reabrirCaja, obtenerCajaAbierta, obtenerCierresCaja, migrarArticulosVenta, eliminarCierreCaja, reenviarMailCierre } from '../modules/Venta/VentaController.js';
+import { crearVenta, eliminarVenta, abrirCaja, cerrarCaja, obtenerCajaAbierta, obtenerCierresCaja, migrarArticulosVenta, eliminarCierreCaja, reenviarMailCierre, reenviarReporteDia } from '../modules/Venta/VentaController.js';
 import CierreCaja from '../modules/Venta/CierreCajaModel.js';
 import { crearDevolucion, eliminarDevolucion } from '../modules/Devolucion/DevolucionController.js';
 import Devolucion from '../modules/Devolucion/DevolucionModel.js';
@@ -538,7 +538,7 @@ test('obtenerCajaAbierta devuelve null sin caja y el resumen con caja abierta', 
   assert.equal(Number(con.body.resumen.total), 0);
 });
 
-test('reabrir caja permite volver a vender y registra cada reapertura', async () => {
+test('cerrar la caja deja el día completo y bloquea volver a vender', async () => {
   await abrirCajaHoy('Juan');
   const product = await crearProducto();
   await runHandler(crearVenta, {
@@ -549,43 +549,18 @@ test('reabrir caja permite volver a vender y registra cada reapertura', async ()
 
   const estadoCerrado = await runHandler(obtenerCajaAbierta, { query: { offset: '0' } });
   assert.equal(estadoCerrado.body.caja, null);
+  assert.equal(estadoCerrado.body.diaCompleto, true, 'un cierre de día completo da el día por terminado');
+  assert.deepEqual(estadoCerrado.body.turnosCerrados, ['dia']);
   assert.ok(estadoCerrado.body.cierreHoy, 'debe informar el cierre de hoy');
   assert.equal(estadoCerrado.body.cierreHoy.cerradoPor, 'Juan');
-
-  const reabrir = await runHandler(reabrirCaja, { body: { nombre: 'Admin', offset: 0 } });
-  assert.equal(reabrir.status, 200);
-  assert.equal(reabrir.body.estado, 'abierto');
-  assert.equal(reabrir.body.reaperturas.length, 1);
-  assert.equal(reabrir.body.reaperturas[0].por, 'Admin');
 
   const venta = await runHandler(crearVenta, {
     body: { articulos: [{ producto: String(product._id), cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] },
   });
-  assert.equal(venta.status, 201);
-
-  const cierre2 = await runHandler(cerrarCaja, { body: { nombre: 'Admin', offset: 0 } });
-  assert.equal(cierre2.status, 200);
-  assert.equal(Number(cierre2.body.total), 200);
-
-  const doc = await CierreCaja.findOne({ turno: 'dia' });
-  assert.equal(doc.reaperturas.length, 1);
-
-  const reabrir2 = await runHandler(reabrirCaja, { body: { nombre: 'Admin', offset: 0 } });
-  assert.equal(reabrir2.status, 200);
-  const doc2 = await CierreCaja.findOne({ turno: 'dia' });
-  assert.equal(doc2.reaperturas.length, 2, 'se puede reabrir más de una vez');
+  assert.equal(venta.status, 409, 'cerrada la caja no se puede vender');
 });
 
-test('reabrir caja falla sin cierre de hoy y con otra caja abierta', async () => {
-  const sinCierre = await runHandler(reabrirCaja, { body: { nombre: 'Admin', offset: 0 } });
-  assert.equal(sinCierre.status, 409);
-
-  await abrirCajaHoy();
-  const conAbierta = await runHandler(reabrirCaja, { body: { nombre: 'Admin', offset: 0 } });
-  assert.equal(conAbierta.status, 409);
-});
-
-test('una caja abierta de un día anterior bloquea vender, retirar y reabrir', async () => {
+test('una caja abierta de un día anterior bloquea vender y retirar', async () => {
   const ayer = new Date(Date.now() - 86400000);
   const fechaAyer = new Date(Date.UTC(ayer.getUTCFullYear(), ayer.getUTCMonth(), ayer.getUTCDate()));
   await CierreCaja.create({
@@ -608,9 +583,6 @@ test('una caja abierta de un día anterior bloquea vender, retirar y reabrir', a
   const retiro = await runHandler(crearRetiroCaja, { body: { monto: 10, motivo: 'x', offset: 0 } });
   assert.equal(retiro.status, 409);
   assert.equal(retiro.body.code, 'CAJA_DIA_ANTERIOR');
-
-  const reabrir = await runHandler(reabrirCaja, { body: { nombre: 'Admin', offset: 0 } });
-  assert.equal(reabrir.status, 409);
 });
 
 test('el historial de cierres no muestra cajas abiertas', async () => {
@@ -622,6 +594,120 @@ test('el historial de cierres no muestra cajas abiertas', async () => {
   const cerrado = await runHandler(obtenerCierresCaja, { query: { offset: '0' } });
   assert.equal(cerrado.body.length, 1);
   assert.equal(cerrado.body[0].estado, 'cerrado');
+});
+
+test('cerrar caja como mañana guarda el turno y permite abrir otra para la tarde', async () => {
+  await abrirCajaHoy();
+  const product = await crearProducto({ cantidad: 10 });
+  await runHandler(crearVenta, {
+    body: { articulos: [{ producto: String(product._id), cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] },
+  });
+
+  const manana = await runHandler(cerrarCaja, { body: { nombre: 'Admin', turno: 'manana', offset: 0 } });
+  assert.equal(manana.status, 200);
+  assert.equal(manana.body.turno, 'manana');
+  assert.equal(Number(manana.body.total), 100);
+
+  const abrirTarde = await abrirCajaHoy('Ana');
+  assert.equal(abrirTarde.status, 201, 'después del cierre de mañana se puede abrir la caja de la tarde');
+
+  await runHandler(crearVenta, {
+    body: { articulos: [{ producto: String(product._id), cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] },
+  });
+  const tarde = await runHandler(cerrarCaja, { body: { nombre: 'Ana', turno: 'tarde', offset: 0 } });
+  assert.equal(tarde.status, 200);
+  assert.equal(tarde.body.turno, 'tarde');
+  assert.equal(Number(tarde.body.total), 100, 'la tarde no debe incluir las ventas de la mañana');
+
+  const docs = await CierreCaja.find({ estado: 'cerrado' }).sort({ turno: 1 });
+  assert.deepEqual(docs.map((d) => d.turno), ['manana', 'tarde']);
+  assert.equal(Number(docs[0].total), 100);
+  assert.equal(Number(docs[1].total), 100);
+});
+
+test('obtenerCajaAbierta informa los turnos cerrados del día', async () => {
+  await abrirCajaHoy();
+  await runHandler(cerrarCaja, { body: { nombre: 'Admin', turno: 'manana', offset: 0 } });
+
+  const trasManana = await runHandler(obtenerCajaAbierta, { query: { offset: '0' } });
+  assert.deepEqual(trasManana.body.turnosCerrados, ['manana']);
+  assert.equal(trasManana.body.diaCompleto, false, 'con solo la mañana el día no está completo');
+
+  await abrirCajaHoy('Ana');
+  await runHandler(cerrarCaja, { body: { nombre: 'Ana', turno: 'tarde', offset: 0 } });
+
+  const trasTarde = await runHandler(obtenerCajaAbierta, { query: { offset: '0' } });
+  assert.deepEqual(trasTarde.body.turnosCerrados, ['manana', 'tarde']);
+  assert.equal(trasTarde.body.diaCompleto, true);
+});
+
+test('cerrar la tarde con enviarReporteDia no rompe el cierre', async () => {
+  await abrirCajaHoy();
+  await runHandler(cerrarCaja, { body: { nombre: 'Admin', turno: 'manana', offset: 0 } });
+  await abrirCajaHoy('Ana');
+
+  const tarde = await runHandler(cerrarCaja, {
+    body: { nombre: 'Ana', turno: 'tarde', enviarReporteDia: true, offset: 0 },
+  });
+  assert.equal(tarde.status, 200);
+  assert.equal(tarde.body.turno, 'tarde');
+});
+
+test('reenviar el reporte del día sin cierres se rechaza', async () => {
+  const res = await runHandler(reenviarReporteDia, { body: { fecha: '2026-01-01', offset: 0 } });
+  assert.equal(res.status, 404);
+});
+
+test('cerrar dos veces el mismo turno se rechaza y la caja queda abierta', async () => {
+  await abrirCajaHoy();
+  const primera = await runHandler(cerrarCaja, { body: { nombre: 'Admin', turno: 'manana', offset: 0 } });
+  assert.equal(primera.status, 200);
+
+  await abrirCajaHoy('Ana');
+  const repetido = await runHandler(cerrarCaja, { body: { nombre: 'Ana', turno: 'manana', offset: 0 } });
+  assert.equal(repetido.status, 409);
+  assert.ok(await CierreCaja.findOne({ estado: 'abierto' }), 'la caja debe seguir abierta tras el rechazo');
+
+  const tarde = await runHandler(cerrarCaja, { body: { nombre: 'Ana', turno: 'tarde', offset: 0 } });
+  assert.equal(tarde.status, 200);
+});
+
+test('cerrar con turno inválido se rechaza y no toca la caja', async () => {
+  await abrirCajaHoy();
+  await assert.rejects(
+    () => runHandler(cerrarCaja, { body: { nombre: 'Admin', turno: 'noche', offset: 0 } }),
+    (error) => error?.name === 'ZodError'
+  );
+  assert.ok(await CierreCaja.findOne({ estado: 'abierto' }), 'la caja debe seguir abierta');
+});
+
+test('no se puede abrir una tercera caja cuando mañana y tarde ya se cerraron', async () => {
+  await abrirCajaHoy();
+  await runHandler(cerrarCaja, { body: { nombre: 'Admin', turno: 'manana', offset: 0 } });
+  await abrirCajaHoy('Ana');
+  await runHandler(cerrarCaja, { body: { nombre: 'Ana', turno: 'tarde', offset: 0 } });
+
+  const tercera = await abrirCajaHoy('Otra');
+  assert.equal(tercera.status, 409);
+});
+
+test('un cierre de mañana no bloquea borrar ventas de la caja de la tarde', async () => {
+  await abrirCajaHoy();
+  const product = await crearProducto({ cantidad: 10 });
+  const ventaManana = await runHandler(crearVenta, {
+    body: { articulos: [{ producto: String(product._id), cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] },
+  });
+  await runHandler(cerrarCaja, { body: { nombre: 'Admin', turno: 'manana', offset: 0 } });
+
+  const borrarManana = await runHandler(eliminarVenta, { params: { id: String(ventaManana.body._id) } });
+  assert.equal(borrarManana.status, 409, 'la venta incluida en el cierre de mañana no se puede borrar');
+
+  await abrirCajaHoy('Ana');
+  const ventaTarde = await runHandler(crearVenta, {
+    body: { articulos: [{ producto: String(product._id), cantidad: 1 }], pagos: [{ metodo: 'efectivo', monto: 100 }] },
+  });
+  const borrarTarde = await runHandler(eliminarVenta, { params: { id: String(ventaTarde.body._id) } });
+  assert.equal(borrarTarde.status, 200, 'la venta de la tarde pertenece a la caja abierta, no al cierre de mañana');
 });
 
 test('el cierre guarda los montos en centavos una sola vez (sin ×100)', async () => {
