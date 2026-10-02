@@ -668,8 +668,32 @@ const Deposito = () => {
       toast({ message: 'Promoción cancelada' });
       abrirOfertas();
       recargarProductos();
+      avisarPromosActualizadas();
     } catch (err) {
       alert({ icon: 'error', title: 'Error', message: obtenerMensajeErrorApi(err, 'Error al cancelar la promoción') });
+    }
+  };
+
+  const eliminarPromo = async (promo) => {
+    const vigente = promo.estado === 'activa' || promo.estado === 'programada';
+    const ok = await confirm({
+      icon: 'warning',
+      title: '¿Eliminar esta promoción?',
+      message: vigente
+        ? 'Se elimina del historial y los productos vuelven al precio normal al instante. Esta acción no se puede deshacer.'
+        : 'Se elimina del historial. Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await eliminarPromocion(promo._id);
+      toast({ message: 'Promoción eliminada' });
+      abrirOfertas();
+      recargarProductos();
+      avisarPromosActualizadas();
+    } catch (err) {
+      alert({ icon: 'error', title: 'Error', message: obtenerMensajeErrorApi(err, 'Error al eliminar la promoción') });
     }
   };
 
@@ -1568,9 +1592,17 @@ const Deposito = () => {
                       {(promo.estado === 'activa' || promo.estado === 'programada') && (
                         <button
                           onClick={() => cancelarPromo(promo)}
-                          className="block w-full text-[11px] font-semibold text-ios-red hover:underline"
+                          className="block w-full text-[11px] font-semibold text-amber-400 hover:underline"
                         >
                           Cancelar
+                        </button>
+                      )}
+                      {esAdmin && (
+                        <button
+                          onClick={() => eliminarPromo(promo)}
+                          className="block w-full text-[11px] font-semibold text-ios-red hover:underline"
+                        >
+                          Eliminar
                         </button>
                       )}
                     </div>
