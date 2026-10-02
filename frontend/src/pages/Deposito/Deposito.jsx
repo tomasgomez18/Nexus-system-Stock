@@ -1454,7 +1454,7 @@ const Deposito = () => {
       </IosModal>
 
       {tab === 'stock' && modoSeleccion && (
-        <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-xl bg-ios-surface/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-ios-alert px-3 py-2.5 flex items-center gap-2 animate-ios-modal">
+        <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-xl bg-ios-surface/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-ios-alert px-3 py-2.5 flex flex-wrap items-center gap-2 animate-ios-modal">
           <button
             type="button"
             onClick={toggleTodos}
