@@ -98,7 +98,7 @@ const Productos = () => {
     confirmSale,
     saleVersion,
   } = useCarrito();
-  const { caja, cierreHoy, esDeHoy, openAbrir, openReabrir } = useCaja();
+  const { caja, diaCompleto, esDeHoy, openAbrir } = useCaja();
 
   const [lowStockOpen, setLowStockOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -565,23 +565,12 @@ const Productos = () => {
           confirmDisabled={sellSaving || !caja || !esDeHoy}
           maxWidth="max-w-2xl"
         >
-        {!caja && cierreHoy && (
+        {!caja && diaCompleto && (
           <div className="mb-3 rounded-2xl px-3.5 py-3 bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs leading-relaxed">
-            La caja está cerrada.
-            {esAdmin ? (
-              <button
-                type="button"
-                onClick={openReabrir}
-                className="mt-2 w-full py-2 rounded-ios-control bg-amber-500/20 font-bold hover:bg-amber-500/30 transition-colors"
-              >
-                Reabrir caja
-              </button>
-            ) : (
-              <p className="mt-1 text-amber-200/80">Solo el administrador puede reabrirla.</p>
-            )}
+            La caja está cerrada. El día ya fue cerrado.
           </div>
         )}
-        {!caja && !cierreHoy && (
+        {!caja && !diaCompleto && (
           <div className="mb-3 rounded-2xl px-3.5 py-3 bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs leading-relaxed">
             La caja está cerrada. Abrila para poder vender.
             <button

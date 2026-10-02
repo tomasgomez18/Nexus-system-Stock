@@ -1,6 +1,5 @@
 import { useCarrito } from '../../context/carritoContexto';
 import { useCaja } from '../../context/cajaContexto';
-import { useAutenticacion } from '../../context/autenticacionContexto';
 import IosButton from '../ui/IosButton';
 import IosToggle from '../ui/IosToggle';
 import { IosField, IosInput, IosSelect } from '../ui/IosForm';
@@ -11,8 +10,7 @@ import PlanCuentaCorriente from './PlanCuentaCorriente';
 
 const PanelCarrito = () => {
   const { confirm } = useIosAlert();
-  const { caja, cierreHoy, esDeHoy, openAbrir, openReabrir } = useCaja();
-  const { esAdmin } = useAutenticacion();
+  const { caja, diaCompleto, esDeHoy, openAbrir } = useCaja();
   const {
     cart,
     removeFromCart,
@@ -198,24 +196,13 @@ const PanelCarrito = () => {
           </span>
         </div>
 
-        {!caja && cierreHoy && (
+        {!caja && diaCompleto && (
           <div className="rounded-2xl px-3.5 py-3 bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs leading-relaxed">
-            La caja está cerrada.
-            {esAdmin ? (
-              <button
-                type="button"
-                onClick={openReabrir}
-                className="mt-2 w-full py-2 rounded-ios-control bg-amber-500/20 font-bold hover:bg-amber-500/30 transition-colors"
-              >
-                Reabrir caja
-              </button>
-            ) : (
-              <p className="mt-1 text-amber-200/80">Solo el administrador puede reabrirla.</p>
-            )}
+            La caja está cerrada. El día ya fue cerrado.
           </div>
         )}
 
-        {!caja && !cierreHoy && (
+        {!caja && !diaCompleto && (
           <div className="rounded-2xl px-3.5 py-3 bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs leading-relaxed">
             La caja está cerrada. Abrila para poder vender.
             <button

@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
-import { obtenerVentas, obtenerEstadisticasVentas, obtenerMasVendidos, eliminarVenta, obtenerCierresCaja, eliminarCierreCaja, reenviarCorreoCierre } from '../../api/ventas';
+import { obtenerVentas, obtenerEstadisticasVentas, obtenerMasVendidos, eliminarVenta, obtenerCierresCaja, eliminarCierreCaja, reenviarCorreoCierre, reenviarReporteDia } from '../../api/ventas';
 import { useApi } from '../../hooks/useApi';
 import RetiroModal from './RetiroModal';
 import Ticket, { printTicket } from '../../components/Ticket/Ticket';
@@ -91,6 +91,12 @@ const turnoBadge = (t) => {
   if (t === 'manana') return 'bg-sky-500/15 text-sky-400';
   if (t === 'tarde') return 'bg-orange-500/15 text-orange-400';
   return 'bg-ios-surface2 text-ios-secondary';
+};
+
+const fechaInputLocal = (fecha) => {
+  const d = new Date(fecha);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const pagoBadge = (metodo) => {
@@ -229,7 +235,7 @@ const Ventas = () => {
   const [resendingId, setResendingId] = useState(null);
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
 
-  const { caja, refresh: refreshCaja, openAbrir, openCerrar, cierreHoy, esDeHoy, openReabrir } = useCaja();
+  const { caja, refresh: refreshCaja, openAbrir, openCerrar, diaCompleto, esDeHoy } = useCaja();
 
   const ventasApi = useApi(
     async () => {
@@ -391,6 +397,26 @@ const Ventas = () => {
     }
   };
 
+  const handleResendReport = async (fecha) => {
+    const ok = await confirm({
+      icon: 'warning',
+      title: '¿Reenviar el reporte del día?',
+      message: 'Se enviará por correo el total del día con el desglose por turno y el listado de ventas.',
+      confirmText: 'Reenviar',
+    });
+    if (!ok) return;
+    const id = `dia-${fecha}`;
+    setResendingId(id);
+    try {
+      await reenviarReporteDia({ fecha: fechaInputLocal(fecha), offset: new Date().getTimezoneOffset() });
+      toast({ message: 'Reporte reenviado', duration: 2000 });
+    } catch (err) {
+      alert({ icon: 'error', title: 'Error', message: obtenerMensajeErrorApi(err, 'Error al reenviar el reporte') });
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   useEffect(() => {
     if (activeTab !== 'cierres') return;
     fetchCloses();
@@ -515,27 +541,21 @@ const Ventas = () => {
                 Cerrar caja
               </button>
             </div>
-          ) : cierreHoy ? (
-            <div className="flex flex-1 sm:flex-none items-center gap-2 bg-ios-surface2 border border-ios-separator/40 rounded-ios-pill pl-3.5 pr-1.5 py-1.5">
+          ) : diaCompleto ? (
+            <div className="flex w-full sm:w-auto min-w-0 items-center gap-2 bg-ios-surface2 border border-ios-separator/40 rounded-ios-pill pl-3.5 pr-1.5 py-1.5">
               <span className="w-2 h-2 rounded-full bg-ios-tertiary shrink-0" />
-              <span className="text-xs text-ios-secondary font-semibold whitespace-nowrap">Caja cerrada hoy</span>
-              {esAdmin ? (
-                <button
-                  onClick={openReabrir}
-                  className="shrink-0 px-3 py-1.5 rounded-ios-pill bg-ios-tint/20 text-ios-tint text-xs font-bold hover:bg-ios-tint/30 transition-colors"
-                >
-                  Reabrir caja
-                </button>
-              ) : (
-                <span className="shrink-0 px-3 py-1.5 text-[11px] text-ios-tertiary whitespace-nowrap">
-                  Solo el admin puede reabrirla
-                </span>
-              )}
+              <span className="min-w-0 flex-1 sm:flex-none truncate text-xs text-ios-secondary font-semibold">Caja cerrada hoy</span>
+              <button
+                onClick={() => setActiveTab('cierres')}
+                className="shrink-0 px-3 py-1.5 rounded-ios-pill bg-ios-tint/20 text-ios-tint text-xs font-bold hover:bg-ios-tint/30 transition-colors"
+              >
+                Ver cierres
+              </button>
             </div>
           ) : (
             <button
               onClick={openAbrir}
-              className="flex-1 sm:flex-none px-4 py-2 rounded-ios-pill bg-amber-500/15 border border-amber-500/30 text-amber-300 text-sm font-semibold hover:bg-amber-500/25 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 rounded-ios-pill bg-amber-500/15 border border-amber-500/30 text-amber-300 text-sm font-semibold hover:bg-amber-500/25 transition-colors"
             >
               Abrir caja
             </button>
@@ -1022,6 +1042,19 @@ const Ventas = () => {
                             >
                               Ver
                             </button>
+                            {c.turnos && esAdmin && (
+                              <button
+                                onClick={() => handleResendReport(c.fecha)}
+                                disabled={resendingId === `dia-${c.fecha}`}
+                                className={`text-xs border px-2.5 py-1 rounded-ios-pill transition-all font-semibold ${
+                                  resendingId === `dia-${c.fecha}`
+                                    ? 'text-amber-400 border-amber-500/30 bg-amber-500/10 cursor-wait'
+                                    : 'text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/10'
+                                }`}
+                              >
+                                {resendingId === `dia-${c.fecha}` ? 'Pendiente…' : 'Reenviar reporte'}
+                              </button>
+                            )}
                             {!c.turnos && esAdmin && (
                               <button
                                 onClick={() => handleResendCloseMail(c._id)}
@@ -1093,20 +1126,33 @@ const Ventas = () => {
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-ios-separator/40">
-                    <p className="text-xs text-ios-tertiary">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-ios-separator/40">
+                    <p className="text-xs text-ios-tertiary min-w-0 truncate">
                       {new Date(c.cerradaEn).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} ·{' '}
                       {c.turnos
                         ? [...new Set(c.turnos.map((t) => t.cerradoPor).filter(Boolean))].join(' / ') || '—'
                         : c.cerradoPor || '—'}
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => viewCloseDetail(c)}
                         className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
                       >
                         Ver
                       </button>
+                      {c.turnos && esAdmin && (
+                        <button
+                          onClick={() => handleResendReport(c.fecha)}
+                          disabled={resendingId === `dia-${c.fecha}`}
+                          className={`text-xs border px-2.5 py-1 rounded-ios-pill transition-all font-semibold ${
+                            resendingId === `dia-${c.fecha}`
+                              ? 'text-amber-400 border-amber-500/30 bg-amber-500/10 cursor-wait'
+                              : 'text-emerald-400 border-emerald-500/30'
+                          }`}
+                        >
+                          {resendingId === `dia-${c.fecha}` ? 'Pendiente…' : 'Reenviar reporte'}
+                        </button>
+                      )}
                       {!c.turnos && esAdmin && (
                         <button
                           onClick={() => handleResendCloseMail(c._id)}
