@@ -403,6 +403,13 @@ const ClienteDetalle = ({ cliente, open, onClose, onCambio }) => {
       alert({ icon: 'warning', title: 'Valores inválidos', message: 'Los porcentajes y los días deben ser números mayores o iguales a 0' });
       return;
     }
+    const ok = await confirm({
+      icon: 'warning',
+      title: '¿Guardar la configuración?',
+      message: 'Se van a sobrescribir los valores por defecto de interés, mora y avisos.',
+      confirmText: 'Guardar',
+    });
+    if (!ok) return;
     setAjustesSaving(true);
     try {
       await actualizarAjustesCuenta({
