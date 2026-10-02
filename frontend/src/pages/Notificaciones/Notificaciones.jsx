@@ -244,7 +244,7 @@ const Notificaciones = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <h1 className="text-[28px] font-bold text-ios-label tracking-tight">Notificaciones</h1>
         {isAdmin && (
           <IosButton variant="tinted" size="sm" className="shadow-none" onClick={openCreate}>

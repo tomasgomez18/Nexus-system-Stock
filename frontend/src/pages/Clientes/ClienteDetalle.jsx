@@ -446,13 +446,13 @@ const ClienteDetalle = ({ cliente, open, onClose, onCambio }) => {
     >
       <div className="space-y-4">
         <div className="rounded-2xl px-4 py-3 bg-ios-surface2/70 border border-ios-separator/40">
-          <div className="flex items-center justify-between gap-3">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-[11px] text-ios-tertiary uppercase tracking-wider font-semibold">{saldoTexto}</p>
               <p className={`text-[26px] font-bold tabular-nums ${saldoCls}`}>{formatMoney(Math.abs(saldoNum))}</p>
             </div>
-            <div className="flex items-start gap-1.5">
-              <div className="text-right text-[12px] space-y-0.5">
+            <div className="flex items-start sm:items-center gap-1.5">
+              <div className="text-left sm:text-right text-[12px] space-y-0.5">
                 <p className="text-ios-secondary">
                   Débitos: <span className="text-ios-red font-semibold tabular-nums">{formatMoney(saldo.totalDebitos)}</span>
                 </p>

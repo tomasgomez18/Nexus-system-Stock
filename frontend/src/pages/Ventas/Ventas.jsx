@@ -472,12 +472,12 @@ const Ventas = () => {
           />
         </IosField>
       </div>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex">
         {periodos.map((p) => (
           <button
             key={p.key}
             onClick={() => selectPeriodo(p)}
-            className={`flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
+            className={`w-full sm:flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
               activePeriodo === p.key
                 ? 'bg-ios-tint text-white shadow-[0_3px_10px_rgba(10,132,255,0.3)]'
                 : 'bg-ios-surface2 text-ios-tertiary hover:text-ios-secondary'
@@ -517,15 +517,15 @@ const Ventas = () => {
           onChange={setActiveTab}
           className="w-full sm:w-auto"
         />
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
           {caja ? (
             <div
-              className={`flex flex-1 sm:flex-none items-center gap-2 rounded-ios-pill pl-3.5 pr-1.5 py-1.5 border ${
+              className={`flex w-full sm:w-auto min-w-0 items-center gap-2 rounded-ios-pill pl-3.5 pr-1.5 py-1.5 border ${
                 esDeHoy ? 'bg-emerald-500/10 border-emerald-500/25' : 'bg-amber-500/10 border-amber-500/25'
               }`}
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${esDeHoy ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <span className={`text-xs font-semibold whitespace-nowrap ${esDeHoy ? 'text-emerald-300' : 'text-amber-300'}`}>
+              <span className={`min-w-0 flex-1 sm:flex-none truncate text-xs font-semibold ${esDeHoy ? 'text-emerald-300' : 'text-amber-300'}`}>
                 {esDeHoy
                   ? `Caja abierta ${new Date(caja.abiertaEn).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} · ${caja.abiertoPor}`
                   : `Caja abierta del ${formatDateShort(caja.fecha)} · ${caja.abiertoPor}`}
@@ -563,7 +563,7 @@ const Ventas = () => {
           <IosButton
             variant="tinted"
             onClick={openWithdrawalModal}
-            className="flex-1 sm:flex-none"
+            className="w-full sm:w-auto"
             disabled={!caja || !esDeHoy}
             title={!esDeHoy ? 'La caja abierta es de un día anterior' : undefined}
           >
@@ -807,8 +807,8 @@ const Ventas = () => {
                 const totalUnidades = items.reduce((acc, i) => acc + (Number(i.cantidad) || 0), 0);
                 return (
                   <div key={s._id} className="bg-ios-surface border border-ios-separator/30 rounded-3xl p-4 shadow-ios-card">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <p className="font-semibold text-ios-label truncate min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <p className="font-semibold text-ios-label truncate min-w-0 w-full sm:w-auto sm:flex-1">
                         {items[0]?.producto?.nombre || 'Producto'}
                         {items.length > 1 && <span className="text-ios-tertiary font-normal"> +{items.length - 1} más</span>}
                       </p>
@@ -817,7 +817,7 @@ const Ventas = () => {
                           {getEstadoVenta(s).label}
                         </span>
                       )}
-                      <div className="flex flex-wrap gap-1 justify-end shrink-0">
+                      <div className="flex flex-wrap gap-1 justify-end min-w-0 ml-auto">
                         {getPagos(s).map((p, i) => (
                           <span
                             key={i}
@@ -953,7 +953,7 @@ const Ventas = () => {
                 <IosToggle checked={cView === 'dia'} onChange={(v) => setCView(v ? 'dia' : 'turno')} />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               {periodos.map((p) => (
                 <button
                   key={p.key}
@@ -962,7 +962,7 @@ const Ventas = () => {
                     setCDesde(p.desde());
                     setCHasta(p.hasta());
                   }}
-                  className={`flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
+                  className={`w-full sm:flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
                     cActivePeriodo === p.key
                       ? 'bg-ios-tint text-white shadow-[0_3px_10px_rgba(10,132,255,0.3)]'
                       : 'bg-ios-surface2 text-ios-tertiary hover:text-ios-secondary'

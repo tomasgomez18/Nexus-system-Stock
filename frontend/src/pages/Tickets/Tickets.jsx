@@ -288,9 +288,9 @@ const Tickets = () => {
                         </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between gap-2 mb-3">
                       <p className="text-[22px] font-bold text-ios-green break-words min-w-0">{formatMoney(s.total)}</p>
-                      <p className="text-xs text-ios-tertiary shrink-0">
+                      <p className="text-xs text-ios-tertiary min-w-0 truncate text-right">
                         {items[0]?.producto?.nombre || 'Producto'}
                         {items.length > 1 && ` +${items.length - 1} más`}
                       </p>

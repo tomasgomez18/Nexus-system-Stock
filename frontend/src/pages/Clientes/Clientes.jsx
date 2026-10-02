@@ -310,12 +310,12 @@ const Clientes = () => {
           return (
             <div
               key={cliente._id}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-ios-separator/30 bg-ios-surface px-4 py-3 hover:bg-ios-hover/[0.04] transition-colors"
+              className="flex flex-wrap items-center gap-3 rounded-2xl border border-ios-separator/30 bg-ios-surface px-4 py-3 hover:bg-ios-hover/[0.04] transition-colors"
             >
               <button
                 type="button"
                 onClick={() => setDetalle(cliente)}
-                className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                className="flex w-full sm:w-auto sm:flex-1 items-center gap-3 min-w-0 text-left"
               >
                 <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-ios-tint/30 to-blue-600/30 flex items-center justify-center text-ios-tint font-bold text-sm">
                   {String(cliente.nombre || '?').trim().charAt(0).toUpperCase()}
@@ -327,33 +327,35 @@ const Clientes = () => {
                   </p>
                 </div>
               </button>
-              {Number(cliente.cuotasVencidas) > 0 && (
-                <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-ios-pill tabular-nums text-ios-red bg-ios-red/10">
-                  {cliente.cuotasVencidas} cuota{Number(cliente.cuotasVencidas) === 1 ? '' : 's'} vencida{Number(cliente.cuotasVencidas) === 1 ? '' : 's'}
+              <div className="flex flex-wrap items-center justify-end gap-2 ml-auto sm:ml-0">
+                {Number(cliente.cuotasVencidas) > 0 && (
+                  <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-ios-pill tabular-nums text-ios-red bg-ios-red/10">
+                    {cliente.cuotasVencidas} cuota{Number(cliente.cuotasVencidas) === 1 ? '' : 's'} vencida{Number(cliente.cuotasVencidas) === 1 ? '' : 's'}
+                  </span>
+                )}
+                <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-ios-pill tabular-nums ${info.cls}`}>
+                  {info.label}
                 </span>
-              )}
-              <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-ios-pill tabular-nums ${info.cls}`}>
-                {info.label}
-              </span>
-              {esAdmin && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => handleEditar(cliente)}
-                    className="p-1.5 text-ios-tint hover:bg-ios-tint/10 rounded-lg transition-colors"
-                    aria-label="Editar cliente"
-                  >
-                    <IconPencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleEliminar(cliente)}
-                    className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-lg transition-colors"
-                    aria-label="Eliminar cliente"
-                  >
-                    <IconTrash className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-              <IconChevronRight className="w-4 h-4 text-ios-tertiary shrink-0" />
+                {esAdmin && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleEditar(cliente)}
+                      className="p-1.5 text-ios-tint hover:bg-ios-tint/10 rounded-lg transition-colors"
+                      aria-label="Editar cliente"
+                    >
+                      <IconPencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleEliminar(cliente)}
+                      className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-lg transition-colors"
+                      aria-label="Eliminar cliente"
+                    >
+                      <IconTrash className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                <IconChevronRight className="hidden sm:block w-4 h-4 text-ios-tertiary shrink-0" />
+              </div>
             </div>
           );
         })}
