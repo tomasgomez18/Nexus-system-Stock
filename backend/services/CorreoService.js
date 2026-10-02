@@ -122,11 +122,13 @@ const construirDetalleVentas = (ventas) => {
 const construirEmpleados = (ventas) =>
   [...new Set((ventas || []).map((v) => v.empleado).filter(Boolean))].join(', ') || '—';
 
-export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDia }) => {
+export const construirDatosCierre = ({ ventas, close, offset = 0, turno, desgloseTurnos = [] }) => {
   const fecha = construirFecha(close.fecha, offset);
   const esDia = turno === 'dia';
+  const esReporteDia = esDia && desgloseTurnos.length > 0;
   const hora = construirHora(close.cerradaEn || new Date(), offset);
   const turnoLabel = esDia ? 'del día' : turno === 'tarde' ? 'turno tarde' : 'turno mañana';
+  const turnoNombre = (t) => (t === 'manana' ? 'Mañana' : t === 'tarde' ? 'Tarde' : 'Día completo');
   const total = formatoPesos(close.total);
   const unidades = close.cantidad;
   const efectivo = formatoPesos(close.efectivo?.total || 0);
@@ -193,27 +195,13 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
     filas.push(['Efectivo esperado', formatoPesos(efectivoEsperado)]);
   }
 
-  if (totalDia) {
-    filas.push(
-      ['Total del día', `$${Number(totalDia.total).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-      ['Efectivo del día', `$${Number(totalDia.efectivo.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
-      ['Transferencia del día', `$${Number(totalDia.transferencia.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
-      ['Tarjeta del día', `$${Number(totalDia.tarjeta.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
-    );
-    if ((totalDia.totalRetiros || 0) > 0) {
-      filas.push(['Retiros del día', formatoPesos(totalDia.totalRetiros)]);
-    }
-    if ((totalDia.totalDevoluciones || 0) > 0) {
-      filas.push(['Devoluciones del día', formatoPesos(totalDia.totalDevoluciones)]);
-    }
-    if ((totalDia.totalRetiros || 0) > 0 || (totalDia.efectivoDevuelto || 0) > 0) {
-      const esperadoDia = Math.max(
-        0,
-        Math.round(
-          ((totalDia.efectivo?.total || 0) - (totalDia.totalRetiros || 0) - (totalDia.efectivoDevuelto || 0)) * 100
-        ) / 100
-      );
-      filas.push(['Efectivo esperado del día', formatoPesos(esperadoDia)]);
+  if (desgloseTurnos.length > 0) {
+    filas.push(['Detalle por turno', '']);
+    for (const t of desgloseTurnos) {
+      filas.push([
+        turnoNombre(t.turno),
+        `${formatoPesos(t.total)} · ${t.cantidad} unid. · Efectivo ${formatoPesos(t.efectivo?.total || 0)} · Transf. ${formatoPesos(t.transferencia?.total || 0)} · Tarjeta ${formatoPesos(t.tarjeta?.total || 0)}${t.cerradoPor ? ` · cerró ${t.cerradoPor}` : ''}`,
+      ]);
     }
   }
 
@@ -227,9 +215,11 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
 
   const textoFilas = filas.map(([k, v]) => `${k}: ${v}`).join('\n');
 
-  const subject = esDia
-    ? `Cierre del día del ${fecha}${reaperturas.length > 0 ? ' (actualizado)' : ''}`
-    : `Cierre ${turnoLabel} del ${fecha}`;
+  const subject = esReporteDia
+    ? `Reporte del total del día del ${fecha}`
+    : esDia
+      ? `Cierre del día del ${fecha}${reaperturas.length > 0 ? ' (actualizado)' : ''}`
+      : `Cierre ${turnoLabel} del ${fecha}`;
 
   /* ---------- HTML monocromo blanco / gris / negro ---------- */
 
@@ -251,12 +241,12 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
           <tr>
             <td>
               <p style="margin:0;font-size:11px;letter-spacing:2.5px;color:#C7C7CC;font-weight:700;">&#10022; CIERRE DE CAJA</p>
-              <p style="margin:10px 0 0;font-size:24px;color:#FFFFFF;font-weight:800;letter-spacing:-0.3px;">Cierre ${turnoLabel}</p>
+              <p style="margin:10px 0 0;font-size:24px;color:#FFFFFF;font-weight:800;letter-spacing:-0.3px;">${esReporteDia ? 'Reporte' : 'Cierre'} ${turnoLabel}</p>
               <p style="margin:5px 0 0;font-size:13px;color:#C7C7CC;" class="bn-t2">${fecha} &middot; ${hora} hs</p>
             </td>
             <td align="right" valign="middle">
               <table role="presentation" cellpadding="0" cellspacing="0" align="right">
-                <tr><td style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.4);color:#FFFFFF;font-size:10px;letter-spacing:1.2px;font-weight:700;padding:6px 11px;border-radius:999px;text-align:center;white-space:nowrap;vertical-align:middle;">${esDia ? 'CIERRE DEL DÍA' : 'CIERRE DE TURNO'}</td></tr>
+                <tr><td style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.4);color:#FFFFFF;font-size:10px;letter-spacing:1.2px;font-weight:700;padding:6px 11px;border-radius:999px;text-align:center;white-space:nowrap;vertical-align:middle;">${esReporteDia ? 'REPORTE DEL DÍA' : esDia ? 'CIERRE DEL DÍA' : 'CIERRE DE TURNO'}</td></tr>
               </table>
             </td>
           </tr>
@@ -380,21 +370,32 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
       </table>
     </td></tr>`;
 
-  const totalDiaHtml = totalDia
+  const desgloseHtml = desgloseTurnos.length > 0
     ? `
     <tr><td style="padding:4px 32px 20px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="bn-day" style="background:#F2F2F7;border:1px solid #E5E5EA;border-left:4px solid #000000;border-radius:14px;">
         <tr><td style="padding:14px 18px;" class="bn-day">
-          <p style="margin:0 0 8px;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:#8E8E93;font-weight:700;" class="bn-m">Total del d&iacute;a</p>
-          <p style="margin:0 0 6px;font-size:13px;color:#1C1C1E;" class="bn-t1">
-            <span style="color:#8E8E93;" class="bn-m">Total:</span>
-            <b style="color:#000000;" class="bn-olive">${formatoPesos(totalDia.total)}</b>
-          </p>
-          <p style="margin:0;font-size:12px;color:#1C1C1E;line-height:1.7;" class="bn-t1">
-            <span style="color:#8E8E93;" class="bn-m">Efectivo</span> <b style="color:#000000;" class="bn-ol">${formatoPesos(totalDia.efectivo.total)}</b>
-            <span style="color:#8E8E93;margin-left:12px;" class="bn-m">Transf.</span> <b style="color:#000000;" class="bn-ol">${formatoPesos(totalDia.transferencia.total)}</b>
-            <span style="color:#8E8E93;margin-left:12px;" class="bn-m">Tarjeta</span> <b style="color:#000000;" class="bn-ol">${formatoPesos(totalDia.tarjeta.total)}</b>
-          </p>
+          <p style="margin:0 0 10px;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:#8E8E93;font-weight:700;" class="bn-m">Detalle por turno</p>
+          ${desgloseTurnos
+            .map(
+              (t) => `
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+            <tr>
+              <td style="font-size:13px;color:#1C1C1E;" class="bn-t1"><b>${turnoNombre(t.turno)}</b>${
+                t.cerradoPor ? `<span style="color:#8E8E93;" class="bn-m"> &middot; cerr&oacute; ${escaparHtml(t.cerradoPor)}</span>` : ''
+              }</td>
+              <td align="right" style="font-size:13px;font-weight:700;color:#000000;white-space:nowrap;" class="bn-olive">${formatoPesos(t.total)}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding-top:2px;font-size:11px;color:#8E8E93;line-height:1.6;" class="bn-m">
+                ${t.cantidad} unid. &middot; Efectivo ${formatoPesos(t.efectivo?.total || 0)} &middot; Transf. ${formatoPesos(t.transferencia?.total || 0)} &middot; Tarjeta ${formatoPesos(t.tarjeta?.total || 0)}${
+                (t.cuentaCorriente?.total || 0) > 0 ? ` &middot; Cta. cte. ${formatoPesos(t.cuentaCorriente.total)}` : ''
+              }
+              </td>
+            </tr>
+          </table>`
+            )
+            .join('')}
         </td></tr>
       </table>
     </td></tr>`
@@ -439,8 +440,8 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
         ${statsHtml}
         ${metaHtml}
         ${retirosHtml}
+        ${desgloseHtml}
         ${ventasHtml}
-        ${totalDiaHtml}
         ${footerHtml}
       </table>
     </td></tr>
@@ -453,7 +454,7 @@ export const construirDatosCierre = ({ ventas, close, offset = 0, turno, totalDi
     hora,
     subject,
     text:
-      `Cierre ${turnoLabel} del ${fecha} a las ${hora}\n` +
+      `${esReporteDia ? `Reporte del total del día` : `Cierre ${turnoLabel}`} del ${fecha} a las ${hora}\n` +
       `${textoFilas}\n\n` +
       `Ventas del ${turnoLabel}:\n${detalle}`,
     html,
@@ -516,7 +517,7 @@ const enviarCorreo = async ({ subject, text, html }) => {
   });
 };
 
-export const enviarCierreDeCaja = async ({ ventas, close, offset, turno, totalDia }) => {
+export const enviarCierreDeCaja = async ({ ventas, close, offset, turno, desgloseTurnos = [] }) => {
   if (!estaConfigurado()) {
     logger.warn('Mail no configurado: se omite el envío del cierre', {
       queRevisar: 'Configurá BREVO_API_KEY o las variables MAIL_HOST/MAIL_USER/MAIL_PASS.',
@@ -526,7 +527,7 @@ export const enviarCierreDeCaja = async ({ ventas, close, offset, turno, totalDi
     return { enviado: false };
   }
 
-  const datos = construirDatosCierre({ ventas, close, offset, turno, totalDia });
+  const datos = construirDatosCierre({ ventas, close, offset, turno, desgloseTurnos });
   await enviarCorreo(datos);
   return { enviado: true };
 };

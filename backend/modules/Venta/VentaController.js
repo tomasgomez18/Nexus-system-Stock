@@ -6,7 +6,7 @@ import Cliente from '../Cliente/ClienteModel.js';
 import CierreCaja from './CierreCajaModel.js';
 import RetiroCaja from '../RetiroCaja/RetiroCajaModel.js';
 import RetiroCajaDia from '../RetiroCaja/RetiroCajaDiaModel.js';
-import { schemaCrearVenta, schemaAbrirCaja, schemaCerrarCaja, schemaReabrirCaja } from './VentaSchema.js';
+import { schemaCrearVenta, schemaAbrirCaja, schemaCerrarCaja, schemaReenviarReporteDia } from './VentaSchema.js';
 import { generarTicketNumero, guardarConTicketUnico } from './TicketUtils.js';
 import { montoEnCuentaCorriente, registrarDebitoDeVenta, cobrosDeCuentaCorriente } from '../MovimientoCuentaCorriente/CuentaCorrienteService.js';
 import {
@@ -479,6 +479,12 @@ export const abrirCaja = async (req, res, next) => {
       });
     }
 
+    const cierresDelDia = await CierreCaja.find({ fecha: fechaDate, estado: 'cerrado' }).select('turno');
+    const turnosCerrados = new Set(cierresDelDia.map((c) => c.turno));
+    if (turnosCerrados.has('manana') && turnosCerrados.has('tarde')) {
+      return res.status(409).json({ message: 'La caja de hoy ya fue cerrada (mañana y tarde).' });
+    }
+
     let caja;
     try {
       caja = await CierreCaja.create({
@@ -519,18 +525,25 @@ export const obtenerCajaAbierta = async (req, res, next) => {
     const offsetRaw = Number(req.query.offset);
     const offset = Number.isFinite(offsetRaw) ? offsetRaw : 0;
     const hoy = inicioDeDia(offset);
-    const cierreHoy = await CierreCaja.findOne({ ...filtroCierreDia(hoy), estado: 'cerrado' })
-      .select('_id fecha cerradaEn cerradoPor total cantidad reaperturas');
+    const cierresHoy = await CierreCaja.find({ fecha: hoy, estado: 'cerrado' }).select(
+      '_id fecha turno cerradaEn cerradoPor total cantidad reaperturas'
+    );
+    const turnosCerrados = [...new Set(cierresHoy.map((c) => c.turno || 'dia'))];
+    const diaCompleto =
+      turnosCerrados.includes('dia') || (turnosCerrados.includes('manana') && turnosCerrados.includes('tarde'));
+    const cierreHoy = cierresHoy.find((c) => (c.turno || 'dia') === 'dia') || null;
 
     const caja = await buscarCajaAbierta();
     if (!caja) {
-      return res.json({ caja: null, resumen: null, cierreHoy, esDeHoy: false });
+      return res.json({ caja: null, resumen: null, cierreHoy, turnosCerrados, diaCompleto, esDeHoy: false });
     }
     const resumen = await calcularResumenCaja(caja);
     res.json({
       caja,
       resumen: resumenParaRespuesta(resumen),
       cierreHoy: null,
+      turnosCerrados,
+      diaCompleto,
       esDeHoy: cajaEsDeHoy(caja, offset),
     });
   } catch (error) {
@@ -538,21 +551,149 @@ export const obtenerCajaAbierta = async (req, res, next) => {
   }
 };
 
+const etiquetaTurno = (turno) => (turno === 'manana' ? 'Mañana' : turno === 'tarde' ? 'Tarde' : 'Día');
+
+const validarTurnoDeCierre = async (caja, turno) => {
+  const otros = await CierreCaja.find({
+    fecha: caja.fecha,
+    _id: { $ne: caja._id },
+    estado: { $ne: 'abierto' },
+  }).select('turno');
+
+  if (otros.length === 0) return null;
+  if (turno === 'dia') {
+    return 'Ese día ya tiene cierres por turno. Elegí Mañana o Tarde.';
+  }
+  if (otros.some((c) => c.turno === turno)) {
+    return `El cierre de ${turno === 'manana' ? 'mañana' : 'tarde'} de hoy ya fue registrado.`;
+  }
+  if (otros.some((c) => !c.turno || c.turno === 'dia')) {
+    return 'La caja de hoy ya fue cerrada como Día completo.';
+  }
+  return null;
+};
+
+export const combinarCierresDia = (closes) => {
+  if (!closes?.length) return null;
+  const orden = { manana: 0, dia: 1, tarde: 2 };
+  const ordenados = [...closes].sort((a, b) => (orden[a.turno] ?? 1) - (orden[b.turno] ?? 1));
+  const principal = ordenados[0];
+  const ultimo = ordenados[ordenados.length - 1];
+  const suma = (fn) => ordenados.reduce((total, c) => total + (Number(fn(c)) || 0), 0);
+
+  return {
+    fecha: principal.fecha,
+    turno: 'dia',
+    abiertoPor: principal.abiertoPor || '',
+    abiertaEn: principal.abiertaEn || principal.fecha,
+    fondoInicial: principal.fondoInicial || 0,
+    cerradaEn: ultimo.cerradaEn || new Date(),
+    cerradoPor: [...new Set(ordenados.map((c) => c.cerradoPor).filter(Boolean))].join(' / ') || '—',
+    total: redondear(suma((c) => c.total)),
+    cantidad: suma((c) => c.cantidad),
+    efectivo: {
+      total: redondear(suma((c) => c.efectivo?.total)),
+      cantidad: suma((c) => c.efectivo?.cantidad),
+    },
+    transferencia: {
+      total: redondear(suma((c) => c.transferencia?.total)),
+      cantidad: suma((c) => c.transferencia?.cantidad),
+    },
+    tarjeta: {
+      total: redondear(suma((c) => c.tarjeta?.total)),
+      cantidad: suma((c) => c.tarjeta?.cantidad),
+    },
+    cuentaCorriente: {
+      total: redondear(suma((c) => c.cuentaCorriente?.total)),
+      cantidad: suma((c) => c.cuentaCorriente?.cantidad),
+    },
+    totalCobrosCuentaCorriente: redondear(suma((c) => c.totalCobrosCuentaCorriente)),
+    cobrosEfectivo: redondear(suma((c) => c.cobrosEfectivo)),
+    retiros: ordenados.flatMap((c) =>
+      (c.retiros || []).map((r) => ({
+        monto: r.monto,
+        motivo: r.motivo,
+        realizadoPor: r.realizadoPor,
+        fecha: r.fecha,
+      }))
+    ),
+    totalRetiros: redondear(suma((c) => c.totalRetiros)),
+    totalDevoluciones: redondear(suma((c) => c.totalDevoluciones)),
+    efectivoDevuelto: redondear(suma((c) => c.efectivoDevuelto)),
+    reaperturas: [],
+  };
+};
+
+const desgloseDeTurno = (c) => ({
+  turno: c.turno || 'dia',
+  total: redondear(c.total),
+  cantidad: c.cantidad || 0,
+  efectivo: { total: redondear(c.efectivo?.total), cantidad: c.efectivo?.cantidad || 0 },
+  transferencia: { total: redondear(c.transferencia?.total), cantidad: c.transferencia?.cantidad || 0 },
+  tarjeta: { total: redondear(c.tarjeta?.total), cantidad: c.tarjeta?.cantidad || 0 },
+  cuentaCorriente: { total: redondear(c.cuentaCorriente?.total), cantidad: c.cuentaCorriente?.cantidad || 0 },
+  cerradoPor: c.cerradoPor || '',
+  cerradaEn: c.cerradaEn,
+});
+
+const construirReporteDia = async (fecha) => {
+  const closes = await CierreCaja.find({ fecha, estado: 'cerrado' });
+  if (!closes.length) return null;
+  const merged = combinarCierresDia(closes);
+  const inicios = closes.map((c) => new Date(c.desde || c.abiertaEn || c.fecha).getTime());
+  const finales = closes.map((c) => new Date(c.hasta || c.cerradaEn || c.fecha).getTime());
+  const desde = new Date(Math.min(...inicios));
+  const hasta = new Date(Math.max(...finales));
+  const ventas = await Venta.find({ fechaCreacion: { $gte: desde, $lt: hasta } })
+    .populate('articulos.producto', 'nombre categoria')
+    .populate('producto', 'nombre categoria');
+  return { merged, ventas, desgloseTurnos: closes.map(desgloseDeTurno) };
+};
+
+const enviarReporteDiaDeFecha = async (fecha, offset) => {
+  const reporte = await construirReporteDia(fecha);
+  if (!reporte) return { enviado: false, motivo: 'sin-cierres' };
+  const resultado = await enviarCierreDeCaja({
+    ventas: reporte.ventas,
+    close: reporte.merged,
+    offset,
+    turno: 'dia',
+    desgloseTurnos: reporte.desgloseTurnos,
+  });
+  return { ...resultado, reporte };
+};
+
 export const cerrarCaja = async (req, res, next) => {
   try {
     const data = schemaCerrarCaja.parse(req.body);
     const offset = Number.isFinite(Number(data.offset)) ? Number(data.offset) : 0;
+    const turno = data.turno;
 
-    let caja = await CierreCaja.findOneAndUpdate(
-      { estado: 'abierto' },
-      { $set: { estado: 'cerrando', cerradaEn: new Date() } },
-      { new: true }
-    );
+    let caja = await CierreCaja.findOne({ estado: 'abierto' });
+    if (caja) {
+      const conflicto = await validarTurnoDeCierre(caja, turno);
+      if (conflicto) {
+        return res.status(409).json({ message: conflicto });
+      }
+      caja = await CierreCaja.findOneAndUpdate(
+        { _id: caja._id, estado: 'abierto' },
+        { $set: { estado: 'cerrando', cerradaEn: new Date() } },
+        { new: true }
+      );
+    }
 
     if (!caja) {
       caja = await CierreCaja.findOne({ estado: 'cerrando' });
       if (!caja) {
         return res.status(409).json({ message: 'No hay una caja abierta para cerrar' });
+      }
+      const conflicto = await validarTurnoDeCierre(caja, turno);
+      if (conflicto) {
+        await CierreCaja.updateOne(
+          { _id: caja._id, estado: 'cerrando' },
+          { $set: { estado: 'abierto', cerradaEn: null } }
+        );
+        return res.status(409).json({ message: conflicto });
       }
     }
 
@@ -560,57 +701,70 @@ export const cerrarCaja = async (req, res, next) => {
     caja.cerradaEn = cerradaEn;
     const resumen = await calcularResumenCaja(caja);
 
-    const actualizada = await CierreCaja.findOneAndUpdate(
-      { _id: caja._id, estado: 'cerrando' },
-      {
-        $set: {
-          estado: 'cerrado',
-          cerradaEn,
-          cerradoPor: data.nombre,
-          cerradoPorUsuario: req.usuario?.nombre || '',
-          desde: resumen.desde,
-          hasta: cerradaEn,
-          total: resumen.total,
-          cantidad: resumen.cantidad,
-          efectivo: {
-            total: resumen.porMetodo.efectivo?.total || 0,
-            cantidad: resumen.porMetodo.efectivo?.cantidad || 0,
+    let actualizada;
+    try {
+      actualizada = await CierreCaja.findOneAndUpdate(
+        { _id: caja._id, estado: 'cerrando' },
+        {
+          $set: {
+            estado: 'cerrado',
+            turno,
+            cerradaEn,
+            cerradoPor: data.nombre,
+            cerradoPorUsuario: req.usuario?.nombre || '',
+            desde: resumen.desde,
+            hasta: cerradaEn,
+            total: resumen.total,
+            cantidad: resumen.cantidad,
+            efectivo: {
+              total: resumen.porMetodo.efectivo?.total || 0,
+              cantidad: resumen.porMetodo.efectivo?.cantidad || 0,
+            },
+            transferencia: {
+              total: resumen.porMetodo.transferencia?.total || 0,
+              cantidad: resumen.porMetodo.transferencia?.cantidad || 0,
+            },
+            tarjeta: {
+              total: resumen.porMetodo.tarjeta?.total || 0,
+              cantidad: resumen.porMetodo.tarjeta?.cantidad || 0,
+            },
+            cuentaCorriente: {
+              total: resumen.porMetodo.cuentaCorriente?.total || 0,
+              cantidad: resumen.porMetodo.cuentaCorriente?.cantidad || 0,
+            },
+            totalCobrosCuentaCorriente: resumen.cobros?.total || 0,
+            cobrosEfectivo: resumen.cobros?.efectivo || 0,
+            retiros: resumen.retiros.map((r) => ({
+              monto: r.monto,
+              motivo: r.motivo,
+              realizadoPor: r.realizadoPor,
+              fecha: r.fechaCreacion,
+            })),
+            totalRetiros: resumen.totalRetiros,
+            totalDevoluciones: resumen.totalDevoluciones,
+            efectivoDevuelto: resumen.efectivoDevuelto,
+            efectivoEsperado: resumen.efectivoEsperado,
           },
-          transferencia: {
-            total: resumen.porMetodo.transferencia?.total || 0,
-            cantidad: resumen.porMetodo.transferencia?.cantidad || 0,
-          },
-          tarjeta: {
-            total: resumen.porMetodo.tarjeta?.total || 0,
-            cantidad: resumen.porMetodo.tarjeta?.cantidad || 0,
-          },
-          cuentaCorriente: {
-            total: resumen.porMetodo.cuentaCorriente?.total || 0,
-            cantidad: resumen.porMetodo.cuentaCorriente?.cantidad || 0,
-          },
-          totalCobrosCuentaCorriente: resumen.cobros?.total || 0,
-          cobrosEfectivo: resumen.cobros?.efectivo || 0,
-          retiros: resumen.retiros.map((r) => ({
-            monto: r.monto,
-            motivo: r.motivo,
-            realizadoPor: r.realizadoPor,
-            fecha: r.fechaCreacion,
-          })),
-          totalRetiros: resumen.totalRetiros,
-          totalDevoluciones: resumen.totalDevoluciones,
-          efectivoDevuelto: resumen.efectivoDevuelto,
-          efectivoEsperado: resumen.efectivoEsperado,
         },
-      },
-      { new: true }
-    );
+        { new: true }
+      );
+    } catch (error) {
+      if (error.code === 11000) {
+        await CierreCaja.updateOne(
+          { _id: caja._id, estado: 'cerrando' },
+          { $set: { estado: 'abierto', cerradaEn: null } }
+        );
+        return res.status(409).json({ message: 'Ese turno ya fue cerrado por otra operación. Probá de nuevo.' });
+      }
+      throw error;
+    }
 
     if (!actualizada) {
       return res.status(409).json({ message: 'La caja ya fue cerrada por otra operación' });
     }
 
     enSegundoPlano(
-      enviarCierreDeCaja({ ventas: resumen.sales, close: actualizada, offset, turno: 'dia', totalDia: null }),
+      enviarCierreDeCaja({ ventas: resumen.sales, close: actualizada, offset, turno: actualizada.turno }),
       {
         mensaje: 'No se pudo enviar el mail del cierre de caja',
         lugar: 'VentaController.js → cerrarCaja',
@@ -618,16 +772,25 @@ export const cerrarCaja = async (req, res, next) => {
       }
     );
 
+    if (data.enviarReporteDia && actualizada.turno === 'tarde') {
+      enSegundoPlano(enviarReporteDiaDeFecha(actualizada.fecha, offset), {
+        mensaje: 'No se pudo enviar el reporte del día',
+        lugar: 'VentaController.js → cerrarCaja',
+        queRevisar: 'Revisá la configuración MAIL_* o BREVO_API_KEY.',
+      });
+    }
+
     void enviarEvento({
       tipo: 'cierre',
       titulo: 'Cierre de caja',
-      mensaje: `Día · $${Number(actualizada.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })} · ${data.nombre}`,
+      mensaje: `${etiquetaTurno(actualizada.turno)} · $${Number(actualizada.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })} · ${data.nombre}`,
       url: '/sales',
       para: 'admins',
     });
 
     res.json({
       fecha: actualizada.fecha,
+      turno: actualizada.turno,
       estado: actualizada.estado,
       abiertaEn: actualizada.abiertaEn,
       abiertoPor: actualizada.abiertoPor,
@@ -636,54 +799,6 @@ export const cerrarCaja = async (req, res, next) => {
       fondoInicial: actualizada.fondoInicial,
       ...resumenParaRespuesta(resumen),
     });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const reabrirCaja = async (req, res, next) => {
-  try {
-    const data = schemaReabrirCaja.parse(req.body);
-    const offset = Number.isFinite(Number(data.offset)) ? Number(data.offset) : 0;
-    const hoy = inicioDeDia(offset);
-
-    const abierta = await buscarCajaAbierta();
-    if (abierta) {
-      const fecha = new Date(abierta.fecha).toLocaleDateString('es-AR');
-      return res.status(409).json({
-        message: `Ya hay una caja abierta del ${fecha} por ${abierta.abiertoPor || 'otro usuario'}.`,
-      });
-    }
-
-    const cerrada = await CierreCaja.findOne({ ...filtroCierreDia(hoy), estado: 'cerrado' });
-    if (!cerrada) {
-      return res.status(409).json({ message: 'No hay una caja cerrada de hoy para reabrir' });
-    }
-
-    const actualizada = await CierreCaja.findOneAndUpdate(
-      { _id: cerrada._id, estado: 'cerrado' },
-      {
-        $set: { estado: 'abierto', cerradaEn: null, hasta: null, cerradoPor: '', cerradoPorUsuario: '' },
-        $push: {
-          reaperturas: { por: data.nombre, usuario: req.usuario?.nombre || '', at: new Date() },
-        },
-      },
-      { new: true }
-    );
-
-    if (!actualizada) {
-      return res.status(409).json({ message: 'La caja ya fue reabierta por otra operación' });
-    }
-
-    void enviarEvento({
-      tipo: 'cierre',
-      titulo: 'Caja reabierta',
-      mensaje: `${data.nombre} reabrió la caja`,
-      url: '/sales',
-      para: 'admins',
-    });
-
-    res.json(actualizada);
   } catch (error) {
     next(error);
   }
@@ -837,41 +952,7 @@ export const reenviarMailCierre = async (req, res, next) => {
       .populate('articulos.producto', 'nombre categoria')
       .populate('producto', 'nombre categoria');
 
-    let totalDia = null;
-    if (close.turno === 'tarde') {
-      const mananaClose = await CierreCaja.findOne({ fecha: close.fecha, turno: 'manana' });
-      if (mananaClose) {
-        totalDia = {
-          total: mananaClose.total + close.total,
-          cantidad: mananaClose.cantidad + close.cantidad,
-          totalRetiros: Math.round(((mananaClose.totalRetiros || 0) + (close.totalRetiros || 0)) * 100) / 100,
-          totalDevoluciones: Math.round(((mananaClose.totalDevoluciones || 0) + (close.totalDevoluciones || 0)) * 100) / 100,
-          efectivoDevuelto: Math.round(((mananaClose.efectivoDevuelto || 0) + (close.efectivoDevuelto || 0)) * 100) / 100,
-          efectivo: {
-            total: mananaClose.efectivo.total + close.efectivo.total,
-            cantidad: mananaClose.efectivo.cantidad + close.efectivo.cantidad,
-          },
-          transferencia: {
-            total: mananaClose.transferencia.total + close.transferencia.total,
-            cantidad: mananaClose.transferencia.cantidad + close.transferencia.cantidad,
-          },
-          tarjeta: {
-            total: mananaClose.tarjeta.total + close.tarjeta.total,
-            cantidad: mananaClose.tarjeta.cantidad + close.tarjeta.cantidad,
-          },
-          cuentaCorriente: {
-            total: (mananaClose.cuentaCorriente?.total || 0) + (close.cuentaCorriente?.total || 0),
-            cantidad: (mananaClose.cuentaCorriente?.cantidad || 0) + (close.cuentaCorriente?.cantidad || 0),
-          },
-          totalCobrosCuentaCorriente:
-            Math.round(((mananaClose.totalCobrosCuentaCorriente || 0) + (close.totalCobrosCuentaCorriente || 0)) * 100) / 100,
-          cobrosEfectivo:
-            Math.round(((mananaClose.cobrosEfectivo || 0) + (close.cobrosEfectivo || 0)) * 100) / 100,
-        };
-      }
-    }
-
-    const resultado = await enviarCierreDeCaja({ ventas: sales, close, offset, turno: close.turno, totalDia });
+    const resultado = await enviarCierreDeCaja({ ventas: sales, close, offset, turno: close.turno });
     if (!resultado.enviado) {
       return res.status(400).json({ message: 'Mail no configurado en el servidor' });
     }
@@ -882,6 +963,35 @@ export const reenviarMailCierre = async (req, res, next) => {
       queRevisar: 'Revisá la configuración MAIL_* o BREVO_API_KEY.',
       origen: 'backend',
       lugar: 'VentaController.js → reenviarMailCierre',
+      stack: error.stack,
+    });
+    next(error);
+  }
+};
+
+export const reenviarReporteDia = async (req, res, next) => {
+  try {
+    const data = schemaReenviarReporteDia.parse(req.body);
+    const offset = Number.isFinite(Number(data.offset)) ? Number(data.offset) : 0;
+    const fecha = parsearFecha(data.fecha, offset);
+    if (!fecha) {
+      return res.status(400).json({ message: 'Fecha inválida' });
+    }
+
+    const resultado = await enviarReporteDiaDeFecha(fecha, offset);
+    if (resultado.motivo === 'sin-cierres') {
+      return res.status(404).json({ message: 'No hay cierres cerrados para esa fecha' });
+    }
+    if (!resultado.enviado) {
+      return res.status(400).json({ message: 'Mail no configurado en el servidor' });
+    }
+    res.json({ message: 'Reporte del día reenviado correctamente' });
+  } catch (error) {
+    logger.error('No se pudo reenviar el reporte del día', {
+      motivo: error.message,
+      queRevisar: 'Revisá la configuración MAIL_* o BREVO_API_KEY.',
+      origen: 'backend',
+      lugar: 'VentaController.js → reenviarReporteDia',
       stack: error.stack,
     });
     next(error);

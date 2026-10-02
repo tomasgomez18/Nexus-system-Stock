@@ -10,8 +10,11 @@ export const encontrarCierreDeFecha = async (fecha, session = null) => {
   const d = new Date(fecha);
   if (Number.isNaN(d.getTime())) return null;
   const query = CierreCaja.findOne({
-    fecha: { $lte: d, $gt: new Date(d.getTime() - 86400000) },
     estado: { $ne: 'abierto' },
+    $or: [
+      { desde: { $lte: d }, hasta: { $gt: d } },
+      { desde: null, fecha: { $lte: d, $gt: new Date(d.getTime() - 86400000) } },
+    ],
   })
     .select('_id fecha turno estado')
     .lean();

@@ -94,10 +94,17 @@ export const schemaAbrirCaja = z.object({
 
 export const schemaCerrarCaja = z.object({
   nombre: nombreCaja,
+  turno: z
+    .enum(['manana', 'tarde', 'dia'], {
+      errorMap: () => ({ message: 'El turno es inválido. Usá mañana, tarde o día completo' }),
+    })
+    .optional()
+    .default('dia'),
+  enviarReporteDia: z.boolean().optional().default(false),
   offset: z.number().int().optional(),
 });
 
-export const schemaReabrirCaja = z.object({
-  nombre: nombreCaja,
+export const schemaReenviarReporteDia = z.object({
+  fecha: z.string({ required_error: 'La fecha es obligatoria' }).min(1, 'La fecha es obligatoria'),
   offset: z.number().int().optional(),
 });
