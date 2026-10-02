@@ -104,6 +104,15 @@ const Empleados = () => {
       });
       if (!ok) return;
     }
+    if (editando && form.rol === editando.rol) {
+      const ok = await confirmar({
+        icon: 'warning',
+        title: '¿Guardar cambios?',
+        message: `Se van a sobrescribir los datos guardados de "${editando.nombre}".`,
+        confirmText: 'Guardar',
+      });
+      if (!ok) return;
+    }
     setGuardando(true);
     try {
       if (editando) {
