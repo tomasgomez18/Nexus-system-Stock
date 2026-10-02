@@ -50,7 +50,8 @@ código `3221225781` / `0xC0000135`, instalalo desde https://aka.ms/vs/17/releas
 - **Tests de integración**: `npm test --prefix backend` levanta una base MongoDB en memoria y ejecuta
   los flujos críticos (venta, borrado, devolución total y su reversión, cambio con ticket legacy,
   cierre, disponible de caja, migración de ventas, seguridad y avisos). Los tests del frontend
-  (`npm test --prefix frontend`, Vitest) cubren helpers de formato, totales y stock por variante.
+  (`npm test --prefix frontend`, Vitest) cubren helpers de formato, paginación, totales y stock por
+  variante. Los tests viven en `backend/tests/` y `frontend/tests/` respectivamente.
   La CI corre ambos en cada push.
 - **Ventas legacy**: al arrancar, las ventas sin `articulos[]` se migran solas al formato nuevo.
 - **Cierres**: no se pueden borrar ventas, retiros ni devoluciones que ya forman parte de una caja
