@@ -196,7 +196,7 @@ const ScannerModal = ({ open, onClose, onLeer, continuo = false, titulo = 'Escan
           <button
             type="button"
             onClick={alternarLinterna}
-            className="p-2 rounded-full bg-ios-surface2 text-ios-secondary hover:bg-ios-surface3 transition-colors"
+            className="p-2 rounded-full bg-ios-surface3 text-ios-secondary hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
             aria-label="Linterna"
           >
             <IconSun className="w-4 h-4" />
