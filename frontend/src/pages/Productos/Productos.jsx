@@ -1003,7 +1003,7 @@ const Productos = () => {
                           {p.cantidad}
                         </span>
                         {soloEnDeposito(p) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/15 text-violet-300 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300 whitespace-nowrap">
                             <IconWarehouse className="w-3 h-3" strokeWidth={2} />
                             Solo en depósito
                           </span>
@@ -1063,7 +1063,7 @@ const Productos = () => {
                       <p className="text-[11px] text-ios-tertiary mt-0.5">Código: {p.codigo}</p>
                     )}
                     {soloEnDeposito(p) && (
-                      <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/15 text-violet-300">
+                      <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
                         <IconWarehouse className="w-3 h-3" strokeWidth={2} />
                         Solo en depósito
                       </span>
@@ -1073,7 +1073,7 @@ const Productos = () => {
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${tieneStockBajo(p) ? 'bg-ios-red/15 text-ios-red' : 'bg-ios-surface2 text-ios-secondary'}`}>
                       {p.cantidad}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-500/15 text-violet-300">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
                       Dep {depositoTotal(p)}
                     </span>
                     <button
