@@ -87,7 +87,7 @@ const PlanCuentaCorriente = () => {
         <button
           type="button"
           onClick={() => setShowSelector(true)}
-          className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-ios-surface2 rounded-ios-control text-left hover:bg-ios-surface3 transition-colors"
+          className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-ios-surface3 rounded-ios-control text-left hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
         >
           {sellCliente ? (
             <span className="min-w-0">
