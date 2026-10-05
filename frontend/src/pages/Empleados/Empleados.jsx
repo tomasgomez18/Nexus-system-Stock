@@ -405,7 +405,7 @@ const Empleados = () => {
                                 </button>
                                 <button
                                   onClick={() => handleEliminar(emp)}
-                                  className="text-ios-red hover:text-ios-red/80 font-medium text-sm"
+                                  className="text-ios-red hover:text-ios-red dark:hover:text-ios-red/80 font-medium text-sm"
                                 >
                                   Eliminar
                                 </button>
