@@ -29,8 +29,8 @@ import AvisoPromociones from '../../components/Promociones/AvisoPromociones';
 import { IconArrowUp, IconChevronDown, IconHistory, IconPencil, IconPlus, IconPrint, IconRefresh, IconTrash, IconWarehouse, IconTag, IconCheck, IconClock, IconX } from '../../components/ui/icons';
 
 const TIPOS = {
-  ingreso_deposito: { label: 'Ingreso a depósito', cls: 'bg-violet-500/15 text-violet-300' },
-  ajuste_deposito: { label: 'Ajuste de depósito', cls: 'bg-violet-500/15 text-violet-300' },
+  ingreso_deposito: { label: 'Ingreso a depósito', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' },
+  ajuste_deposito: { label: 'Ajuste de depósito', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' },
   reposicion: { label: 'Reposición a salón', cls: 'bg-ios-green/15 text-ios-green' },
   retiro_deposito: { label: 'Retiro a depósito', cls: 'bg-amber-500/15 text-amber-400' },
   ajuste_salon: { label: 'Ajuste de salón', cls: 'bg-ios-surface2 text-ios-secondary' },
