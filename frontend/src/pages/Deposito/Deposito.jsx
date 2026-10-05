@@ -908,7 +908,7 @@ const Deposito = () => {
                         </td>
                         <td className="px-4 py-3.5">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            depositoTotal(p) > 0 ? 'bg-violet-500/15 text-violet-300' : 'bg-ios-surface2 text-ios-tertiary'
+                            depositoTotal(p) > 0 ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' : 'bg-ios-surface2 text-ios-tertiary'
                           }`}>
                             {depositoTotal(p)}
                           </span>
@@ -945,7 +945,7 @@ const Deposito = () => {
                         </p>
                         <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            depositoTotal(p) > 0 ? 'bg-violet-500/15 text-violet-300' : 'bg-ios-surface2 text-ios-tertiary'
+                            depositoTotal(p) > 0 ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' : 'bg-ios-surface2 text-ios-tertiary'
                           }`}>
                             Dep {depositoTotal(p)}
                           </span>
