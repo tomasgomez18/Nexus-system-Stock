@@ -320,7 +320,7 @@ const FormularioProducto = ({ initial, onSubmit, onCancel, isSubmitting: externa
                   <button
                     type="button"
                     onClick={() => addVariantToColor(color)}
-                    className="mt-2 text-xs text-ios-green hover:text-ios-green/80 transition-colors font-medium"
+                    className="mt-2 text-xs text-ios-green hover:text-ios-green dark:hover:text-ios-green/80 transition-colors font-medium"
                   >
                     + Agregar talle
                   </button>
