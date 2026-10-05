@@ -480,7 +480,7 @@ const Ventas = () => {
             className={`w-full sm:flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
               activePeriodo === p.key
                 ? 'bg-ios-tint text-white shadow-[0_3px_10px_rgba(10,132,255,0.3)]'
-                : 'bg-ios-surface2 text-ios-tertiary hover:text-ios-secondary'
+                : 'bg-ios-surface3 text-ios-tertiary hover:text-ios-secondary dark:bg-ios-surface2'
             }`}
           >
             {p.label}
@@ -965,7 +965,7 @@ const Ventas = () => {
                   className={`w-full sm:flex-1 px-3.5 py-2 rounded-ios-pill text-sm font-semibold transition-all ios-btn-press ${
                     cActivePeriodo === p.key
                       ? 'bg-ios-tint text-white shadow-[0_3px_10px_rgba(10,132,255,0.3)]'
-                      : 'bg-ios-surface2 text-ios-tertiary hover:text-ios-secondary'
+                      : 'bg-ios-surface3 text-ios-tertiary hover:text-ios-secondary dark:bg-ios-surface2'
                   }`}
                 >
                   {p.label}
