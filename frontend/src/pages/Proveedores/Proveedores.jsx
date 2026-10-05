@@ -218,13 +218,13 @@ const Proveedores = () => {
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => handleEdit(sup)}
-                          className="text-ios-tint hover:text-ios-tint/80 font-medium text-sm"
+                          className="text-ios-tint hover:text-ios-tint dark:hover:text-ios-tint/80 font-medium text-sm"
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => handleDelete(sup._id)}
-                          className="text-ios-red hover:text-ios-red/80 font-medium text-sm"
+                          className="text-ios-red hover:text-ios-red dark:hover:text-ios-red/80 font-medium text-sm"
                         >
                           Eliminar
                         </button>
