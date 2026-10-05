@@ -496,7 +496,7 @@ const Empleados = () => {
                           </button>
                           <button
                             onClick={() => handleEliminar(emp)}
-                            className="text-ios-red text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold"
+                            className="text-ios-red text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold"
                           >
                             Eliminar
                           </button>
