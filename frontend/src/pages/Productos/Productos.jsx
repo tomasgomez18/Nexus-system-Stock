@@ -435,7 +435,7 @@ const Productos = () => {
           <div className="relative shrink-0">
             <button
               onClick={() => setLowStockOpen(!lowStockOpen)}
-              className="ios-btn-press flex items-center gap-2 px-3.5 py-2 bg-ios-red/10 border border-ios-red/25 rounded-ios-pill text-sm text-ios-red font-semibold hover:bg-ios-red/15 transition-all"
+              className="ios-btn-press flex items-center gap-2 px-3.5 py-2 bg-ios-red/15 border border-ios-red/45 rounded-ios-pill text-sm text-ios-red font-semibold hover:bg-ios-red/20 transition-all dark:bg-ios-red/10 dark:border-ios-red/25 dark:hover:bg-ios-red/15"
             >
               <IconAlert className="w-4 h-4 shrink-0" strokeWidth={1.9} />
               <span className="text-xs font-semibold whitespace-nowrap">
