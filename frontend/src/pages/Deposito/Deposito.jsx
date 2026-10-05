@@ -724,7 +724,7 @@ const Deposito = () => {
           )}
           <button
             onClick={() => (tab === 'stock' ? recargarProductos() : recargarMovimientos())}
-            className="ios-btn-press flex items-center gap-2 px-3.5 py-2 bg-ios-surface2 rounded-ios-pill text-sm text-ios-secondary font-medium hover:bg-ios-surface3 transition-colors"
+            className="ios-btn-press flex items-center gap-2 px-3.5 py-2 bg-ios-surface3 rounded-ios-pill text-sm text-ios-secondary font-medium hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
           >
             <IconRefresh className="w-4 h-4" />
             Actualizar
@@ -738,7 +738,7 @@ const Deposito = () => {
         <button
           onClick={() => setTab('stock')}
           className={`px-4 py-2 rounded-ios-pill text-sm font-semibold transition-colors ${
-            tab === 'stock' ? 'bg-ios-tint text-white' : 'bg-ios-surface2 text-ios-secondary hover:bg-ios-surface3'
+            tab === 'stock' ? 'bg-ios-tint text-white' : 'bg-ios-surface3 text-ios-secondary hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
           }`}
         >
           Stock
@@ -747,7 +747,7 @@ const Deposito = () => {
           <button
             onClick={() => setTab('movimientos')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-ios-pill text-sm font-semibold transition-colors ${
-              tab === 'movimientos' ? 'bg-ios-tint text-white' : 'bg-ios-surface2 text-ios-secondary hover:bg-ios-surface3'
+              tab === 'movimientos' ? 'bg-ios-tint text-white' : 'bg-ios-surface3 text-ios-secondary hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
             }`}
           >
             <IconHistory className="w-4 h-4" />
@@ -1052,7 +1052,7 @@ const Deposito = () => {
             />
             <button
               onClick={exportarMovimientosCsv}
-              className="ios-btn-press px-3.5 py-2 bg-ios-surface2 rounded-ios-pill text-sm text-ios-secondary font-medium hover:bg-ios-surface3 transition-colors"
+              className="ios-btn-press px-3.5 py-2 bg-ios-surface3 rounded-ios-pill text-sm text-ios-secondary font-medium hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
             >
               Exportar CSV
             </button>
@@ -1103,7 +1103,7 @@ const Deposito = () => {
                 <div className="mt-4 flex justify-center">
                   <button
                     onClick={() => setMovLimit((n) => Math.min(n + 100, 500))}
-                    className="ios-btn-press px-4 py-2.5 bg-ios-surface2 rounded-ios-pill text-sm text-ios-secondary font-medium hover:bg-ios-surface3 transition-colors"
+                    className="ios-btn-press px-4 py-2.5 bg-ios-surface3 rounded-ios-pill text-sm text-ios-secondary font-medium hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
                   >
                     Cargar más movimientos
                   </button>
@@ -1458,7 +1458,7 @@ const Deposito = () => {
           <button
             type="button"
             onClick={toggleTodos}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-ios-control bg-ios-surface2 text-ios-secondary text-xs font-semibold hover:bg-ios-surface3 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-ios-control bg-ios-surface3 text-ios-secondary text-xs font-semibold hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
           >
             <span className={`w-4 h-4 rounded border flex items-center justify-center ${todosSeleccionados ? 'bg-ios-tint border-ios-tint text-white' : 'border-ios-separator text-transparent'}`}>
               <IconCheck className="w-3 h-3" strokeWidth={3} />
