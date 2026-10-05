@@ -709,7 +709,7 @@ const Productos = () => {
                   className={`px-3 py-2 text-sm rounded-ios-control border transition-all ios-btn-press font-medium ${
                     sellMetodoPago === m.key
                       ? m.activeCls
-                      : 'bg-ios-surface2 text-ios-tertiary border-transparent hover:bg-ios-surface3'
+                      : 'bg-ios-surface3 text-ios-tertiary border-transparent hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
                   }`}
                 >
                   {m.label}
