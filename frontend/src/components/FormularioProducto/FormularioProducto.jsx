@@ -310,7 +310,7 @@ const FormularioProducto = ({ initial, onSubmit, onCancel, isSubmitting: externa
                         <button
                           type="button"
                           onClick={() => removeVariant(i)}
-                          className="p-2 text-ios-red hover:bg-ios-red/10 rounded-lg transition-all"
+                          className="p-2 text-ios-red hover:bg-ios-red/15 dark:hover:bg-ios-red/10 rounded-lg transition-all"
                         >
                           <IconX className="w-4 h-4" />
                         </button>
