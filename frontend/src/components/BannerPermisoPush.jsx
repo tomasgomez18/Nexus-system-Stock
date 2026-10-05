@@ -112,13 +112,13 @@ const BannerPermisoPush = () => {
         <div className="mt-3 flex gap-2">
           <button
             onClick={noPreguntar}
-            className="flex-1 px-3 py-2 rounded-ios-control text-xs text-ios-tertiary font-medium bg-ios-surface2 hover:bg-ios-surface3 transition-colors"
+            className="flex-1 px-3 py-2 rounded-ios-control text-xs text-ios-tertiary font-medium bg-ios-surface3 hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
           >
             No volver a preguntar
           </button>
           <button
             onClick={ahoraNo}
-            className="flex-1 px-3 py-2 rounded-ios-control text-xs text-ios-secondary font-medium bg-ios-surface2 hover:bg-ios-surface3 transition-colors"
+            className="flex-1 px-3 py-2 rounded-ios-control text-xs text-ios-secondary font-medium bg-ios-surface3 hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
           >
             Ahora no
           </button>
