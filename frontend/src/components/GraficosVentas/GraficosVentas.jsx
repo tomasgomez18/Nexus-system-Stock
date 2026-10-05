@@ -88,7 +88,7 @@ const Badge = ({ activo, onClick, color, children }) => (
     onClick={onClick}
     aria-pressed={activo}
     className={`ios-btn-press flex items-center gap-2 px-3 py-1.5 rounded-ios-pill text-[13px] font-semibold border transition-all ${
-      activo ? 'text-ios-label' : 'text-ios-tertiary border-transparent bg-ios-surface2'
+      activo ? 'text-ios-label' : 'text-ios-tertiary border-transparent bg-ios-surface3 dark:bg-ios-surface2'
     }`}
     style={activo ? { backgroundColor: `${color}26`, borderColor: color } : undefined}
   >
