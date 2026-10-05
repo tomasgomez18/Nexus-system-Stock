@@ -618,7 +618,7 @@ const Productos = () => {
               setScannerContinuo(true);
               setScannerOpen(true);
             }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-ios-control bg-ios-surface2 text-ios-secondary text-xs font-medium hover:bg-ios-surface3 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-ios-control bg-ios-surface3 text-ios-secondary text-xs font-medium hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3 transition-colors"
           >
             <IconCamera className="w-3.5 h-3.5" />
             Escanear
