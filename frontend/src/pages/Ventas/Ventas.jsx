@@ -534,8 +534,8 @@ const Ventas = () => {
                 onClick={openCerrar}
                 className={`shrink-0 px-3 py-1.5 rounded-ios-pill text-xs font-bold transition-colors ${
                   esDeHoy
-                    ? 'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
-                    : 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
+                    ? 'bg-emerald-500/25 text-emerald-700 hover:bg-emerald-500/35 dark:bg-emerald-500/20 dark:text-emerald-200 dark:hover:bg-emerald-500/30'
+                    : 'bg-amber-500/25 text-amber-700 hover:bg-amber-500/35 dark:bg-amber-500/20 dark:text-amber-200 dark:hover:bg-amber-500/30'
                 }`}
               >
                 Cerrar caja
@@ -547,7 +547,7 @@ const Ventas = () => {
               <span className="min-w-0 flex-1 sm:flex-none truncate text-xs text-ios-secondary font-semibold">Caja cerrada hoy</span>
               <button
                 onClick={() => setActiveTab('cierres')}
-                className="shrink-0 px-3 py-1.5 rounded-ios-pill bg-ios-tint/20 text-ios-tint text-xs font-bold hover:bg-ios-tint/30 transition-colors"
+                className="shrink-0 px-3 py-1.5 rounded-ios-pill bg-ios-tint/25 text-ios-tint text-xs font-bold hover:bg-ios-tint/35 transition-colors dark:bg-ios-tint/20 dark:hover:bg-ios-tint/30"
               >
                 Ver cierres
               </button>
@@ -555,7 +555,7 @@ const Ventas = () => {
           ) : (
             <button
               onClick={openAbrir}
-              className="w-full sm:w-auto px-4 py-2 rounded-ios-pill bg-amber-500/15 border border-amber-500/30 text-amber-300 text-sm font-semibold hover:bg-amber-500/25 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 rounded-ios-pill bg-amber-100 border border-amber-300 text-amber-800 text-sm font-semibold hover:bg-amber-200 transition-colors dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/25"
             >
               Abrir caja
             </button>
