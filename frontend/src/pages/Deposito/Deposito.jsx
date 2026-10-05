@@ -769,8 +769,8 @@ const Deposito = () => {
               onClick={() => setSoloConStock(!soloConStock)}
               className={`px-3.5 py-2 rounded-ios-pill text-sm font-medium transition-colors ${
                 soloConStock
-                  ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
-                  : 'bg-ios-surface2 text-ios-tertiary border border-transparent hover:bg-ios-surface3'
+                  ? 'bg-violet-500/20 text-violet-700 border border-violet-500/45 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/30'
+                  : 'bg-ios-surface3 text-ios-tertiary border border-transparent hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
               }`}
             >
               Solo con depósito
