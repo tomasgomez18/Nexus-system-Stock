@@ -1048,8 +1048,8 @@ const Ventas = () => {
                                 disabled={resendingId === `dia-${c.fecha}`}
                                 className={`text-xs border px-2.5 py-1 rounded-ios-pill transition-all font-semibold ${
                                   resendingId === `dia-${c.fecha}`
-                                    ? 'text-amber-400 border-amber-500/30 bg-amber-500/10 cursor-wait'
-                                    : 'text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/10'
+                                    ? 'text-amber-400 border-amber-500/50 bg-amber-500/15 cursor-wait dark:border-amber-500/30 dark:bg-amber-500/10'
+                                    : 'text-emerald-400 hover:text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/15 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10'
                                 }`}
                               >
                                 {resendingId === `dia-${c.fecha}` ? 'Pendiente…' : 'Reenviar reporte'}
@@ -1061,8 +1061,8 @@ const Ventas = () => {
                                 disabled={resendingId === c._id}
                                 className={`text-xs border px-2.5 py-1 rounded-ios-pill transition-all font-semibold ${
                                   resendingId === c._id
-                                    ? 'text-amber-400 border-amber-500/30 bg-amber-500/10 cursor-wait'
-: 'text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/10'
+                                    ? 'text-amber-400 border-amber-500/50 bg-amber-500/15 cursor-wait dark:border-amber-500/30 dark:bg-amber-500/10'
+: 'text-emerald-400 hover:text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/15 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10'
                                 }`}
                               >
                                 {resendingId === c._id ? 'Pendiente…' : 'Reenviar'}
