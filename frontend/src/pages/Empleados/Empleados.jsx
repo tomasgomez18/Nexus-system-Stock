@@ -385,7 +385,7 @@ const Empleados = () => {
                           <>
                             <button
                               onClick={() => handleEditar(emp)}
-                              className="text-ios-tint hover:text-ios-tint/80 font-medium text-sm"
+                              className="text-ios-tint hover:text-ios-tint dark:hover:text-ios-tint/80 font-medium text-sm"
                             >
                               Editar
                             </button>
