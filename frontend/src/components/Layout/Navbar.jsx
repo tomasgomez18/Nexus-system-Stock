@@ -69,7 +69,7 @@ const Navbar = () => {
                   <div className="h-px bg-ios-separator/40 my-1" />
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[15px] text-ios-red rounded-xl hover:bg-ios-red/10 transition-colors font-medium"
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[15px] text-ios-red rounded-xl hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-colors font-medium"
                   >
                     <IconLogout className="w-[18px] h-[18px]" strokeWidth={1.8} />
                     Cerrar Sesión
