@@ -628,7 +628,7 @@ const ClienteDetalle = ({ cliente, open, onClose, onCambio }) => {
                       {esPago(movimiento) && (
                         <button
                           onClick={() => handleEditar(movimiento)}
-                          className="p-1.5 text-ios-tint hover:bg-ios-tint/10 rounded-lg transition-colors"
+                          className="p-1.5 text-ios-tint hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 rounded-lg transition-colors"
                           aria-label="Editar pago"
                         >
                           <IconPencil className="w-4 h-4" />
