@@ -208,7 +208,7 @@ const PanelCarrito = () => {
             <button
               type="button"
               onClick={openAbrir}
-              className="mt-2 w-full py-2 rounded-ios-control bg-amber-500/20 font-bold hover:bg-amber-500/30 transition-colors"
+              className="mt-2 w-full py-2 rounded-ios-control bg-amber-100 border border-amber-300 text-amber-800 font-bold hover:bg-amber-200 transition-colors dark:border-0 dark:bg-amber-500/20 dark:text-amber-300 dark:hover:bg-amber-500/30"
             >
               Abrir caja
             </button>
