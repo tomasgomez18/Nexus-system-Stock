@@ -3,8 +3,8 @@ const base = 'ios-btn-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-
 const chipCls = (seleccionada) =>
   `${base} ${
     seleccionada
-      ? 'bg-ios-green/15 text-ios-green border border-ios-green/30'
-      : 'bg-ios-surface2 text-ios-tertiary border border-transparent hover:bg-ios-surface3'
+      ? 'bg-ios-green/25 text-ios-green border border-ios-green/50 dark:bg-ios-green/15 dark:border-ios-green/30'
+      : 'bg-ios-surface3 text-ios-tertiary border border-transparent hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
   }`;
 
 const FiltroCategorias = ({ categorias, activa, onChange, className = '' }) => {
