@@ -69,7 +69,7 @@ const SelectorCliente = ({ open, onClose, onSelect, seleccionado }) => {
                 onClose();
               }}
               className={`w-full flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors ${
-                activo ? 'border-ios-tint/50 bg-ios-tint/10' : 'border-ios-separator/30 bg-ios-surface hover:bg-ios-hover/[0.05]'
+                activo ? 'border-ios-tint/60 bg-ios-tint/20 dark:border-ios-tint/50 dark:bg-ios-tint/10' : 'border-ios-separator/30 bg-ios-surface hover:bg-ios-hover/[0.05]'
               }`}
             >
               <div className="min-w-0">
