@@ -9,12 +9,12 @@ const MODOS = [
 ];
 
 const VARIANTES = {
-  numero: 'bg-ios-surface2 text-ios-label hover:bg-ios-surface3',
-  funcion: 'bg-ios-surface2/60 text-ios-secondary hover:bg-ios-surface3',
-  operador: 'bg-ios-tint/15 text-ios-tint hover:bg-ios-tint/25',
+  numero: 'bg-ios-surface3 text-ios-label hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3',
+  funcion: 'bg-ios-surface3/80 text-ios-secondary hover:bg-ios-separator/40 dark:bg-ios-surface2/60 dark:hover:bg-ios-surface3',
+  operador: 'bg-ios-tint/20 text-ios-tint hover:bg-ios-tint/30 dark:bg-ios-tint/15 dark:hover:bg-ios-tint/25',
   accion: 'bg-ios-surface3 text-ios-secondary hover:bg-ios-hover/10',
   igual: 'bg-gradient-to-b from-[#0E8CFF] to-ios-tint text-white shadow-[0_4px_14px_rgba(10,132,255,0.35)]',
-  activo: 'bg-ios-tint/20 text-ios-tint',
+  activo: 'bg-ios-tint/30 text-ios-tint dark:bg-ios-tint/20',
 };
 
 const Boton = ({ variante = 'numero', chico = false, className = '', children, ...props }) => (
