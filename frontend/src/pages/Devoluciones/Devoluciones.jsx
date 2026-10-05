@@ -114,7 +114,7 @@ const Devoluciones = () => {
                       {esAdmin && (
                         <button
                           onClick={() => handleDelete(r._id)}
-                          className="text-ios-red hover:text-ios-red/80 font-medium text-sm"
+                          className="text-ios-red hover:text-ios-red dark:hover:text-ios-red/80 font-medium text-sm"
                         >
                           Eliminar
                         </button>
