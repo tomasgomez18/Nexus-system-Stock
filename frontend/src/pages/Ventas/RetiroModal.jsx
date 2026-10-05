@@ -203,7 +203,7 @@ const RetiroModal = ({ open, onClose, onDone, usuario, esAdmin }) => {
                   {esAdmin && (
                     <button
                       onClick={() => handleDeleteWithdrawal(w._id)}
-                      className="text-ios-red text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold shrink-0"
+                      className="text-ios-red text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold shrink-0"
                     >
                       Eliminar
                     </button>
