@@ -302,14 +302,14 @@ const Tickets = () => {
                       {isExpanded ? (
                         <button
                           onClick={() => setExpandedId(null)}
-                          className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold shrink-0"
+                          className="text-ios-tint text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold shrink-0"
                         >
                           Ocultar detalle
                         </button>
                       ) : (
                         <button
                           onClick={() => setExpandedId(s._id)}
-                          className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold shrink-0"
+                          className="text-ios-tint text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold shrink-0"
                         >
                           Ver detalle
                         </button>
