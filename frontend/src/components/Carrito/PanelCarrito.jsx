@@ -57,7 +57,7 @@ const PanelCarrito = () => {
         </div>
         <button
           onClick={handleVaciar}
-          className="shrink-0 text-[11px] text-ios-red border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-colors font-semibold"
+          className="shrink-0 text-[11px] text-ios-red border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-colors font-semibold"
         >
           Vaciar
         </button>
