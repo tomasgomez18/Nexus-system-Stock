@@ -1355,8 +1355,8 @@ const Deposito = () => {
                   onClick={() => setEtiquetaModo('etiqueta')}
                   className={`flex-1 px-3 py-2 text-sm rounded-ios-control border transition-all font-medium ${
                     etiquetaModo === 'etiqueta'
-                      ? 'bg-ios-tint/15 text-ios-tint border-ios-tint/30'
-                      : 'bg-ios-surface2 text-ios-tertiary border-transparent hover:bg-ios-surface3'
+                      ? 'bg-ios-tint/25 text-ios-tint border-ios-tint/50 dark:bg-ios-tint/15 dark:border-ios-tint/30'
+                      : 'bg-ios-surface3 text-ios-tertiary border-transparent hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
                   }`}
                 >
                   Etiqueta (una por página)
@@ -1366,8 +1366,8 @@ const Deposito = () => {
                   onClick={() => setEtiquetaModo('hoja')}
                   className={`flex-1 px-3 py-2 text-sm rounded-ios-control border transition-all font-medium ${
                     etiquetaModo === 'hoja'
-                      ? 'bg-ios-tint/15 text-ios-tint border-ios-tint/30'
-                      : 'bg-ios-surface2 text-ios-tertiary border-transparent hover:bg-ios-surface3'
+                      ? 'bg-ios-tint/25 text-ios-tint border-ios-tint/50 dark:bg-ios-tint/15 dark:border-ios-tint/30'
+                      : 'bg-ios-surface3 text-ios-tertiary border-transparent hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
                   }`}
                 >
                   Hoja A4 (grilla)
