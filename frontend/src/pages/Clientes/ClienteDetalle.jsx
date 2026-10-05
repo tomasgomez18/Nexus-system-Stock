@@ -637,7 +637,7 @@ const ClienteDetalle = ({ cliente, open, onClose, onCambio }) => {
                       {!esMovimientoDeSistema(movimiento) && (
                         <button
                           onClick={() => pedirAnular(movimiento)}
-                          className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-lg transition-colors"
+                          className="p-1.5 text-ios-red hover:bg-ios-red/15 dark:hover:bg-ios-red/10 rounded-lg transition-colors"
                           aria-label="Anular movimiento"
                         >
                           <IconX className="w-4 h-4" />
