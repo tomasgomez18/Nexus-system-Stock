@@ -50,7 +50,7 @@ const Paginacion = ({ pagina, porPagina, total, onPagina, onPorPagina, deshabili
           type="button"
           onClick={() => ir(paginaSegura - 1)}
           disabled={deshabilitado || paginaSegura <= 1}
-          className={`${botonBase} w-9 h-9 bg-ios-surface2 text-ios-secondary hover:bg-ios-surface3`}
+          className={`${botonBase} w-9 h-9 bg-ios-surface3 text-ios-secondary hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3`}
           aria-label="Página anterior"
         >
           <IconChevronRight className="w-4 h-4 rotate-180" />
@@ -70,7 +70,7 @@ const Paginacion = ({ pagina, porPagina, total, onPagina, onPorPagina, deshabili
                 disabled={deshabilitado}
                 aria-current={p === paginaSegura ? 'page' : undefined}
                 className={`${botonBase} min-w-[36px] h-9 px-2 ${
-                  p === paginaSegura ? 'bg-ios-tint text-white' : 'bg-ios-surface2 text-ios-secondary hover:bg-ios-surface3'
+                  p === paginaSegura ? 'bg-ios-tint text-white' : 'bg-ios-surface3 text-ios-secondary hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3'
                 }`}
               >
                 {p}
@@ -87,7 +87,7 @@ const Paginacion = ({ pagina, porPagina, total, onPagina, onPorPagina, deshabili
           type="button"
           onClick={() => ir(paginaSegura + 1)}
           disabled={deshabilitado || paginaSegura >= totalPaginas}
-          className={`${botonBase} w-9 h-9 bg-ios-surface2 text-ios-secondary hover:bg-ios-surface3`}
+          className={`${botonBase} w-9 h-9 bg-ios-surface3 text-ios-secondary hover:bg-ios-separator/40 dark:bg-ios-surface2 dark:hover:bg-ios-surface3`}
           aria-label="Página siguiente"
         >
           <IconChevronRight className="w-4 h-4" />
