@@ -1038,7 +1038,7 @@ const Ventas = () => {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => viewCloseDetail(c)}
-                              className="text-ios-tint hover:text-ios-tint/80 text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
+                              className="text-ios-tint hover:text-ios-tint dark:hover:text-ios-tint/80 text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold"
                             >
                               Ver
                             </button>
@@ -1071,7 +1071,7 @@ const Ventas = () => {
                             {!c.turnos && esAdmin && (
                               <button
                                 onClick={() => handleDeleteClose(c._id)}
-                                className="text-ios-red hover:text-ios-red/80 text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold"
+                                className="text-ios-red hover:text-ios-red dark:hover:text-ios-red/80 text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold"
                               >
                                 Eliminar
                               </button>
@@ -1136,7 +1136,7 @@ const Ventas = () => {
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => viewCloseDetail(c)}
-                        className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
+                        className="text-ios-tint text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold"
                       >
                         Ver
                       </button>
@@ -1169,7 +1169,7 @@ const Ventas = () => {
                       {!c.turnos && esAdmin && (
                         <button
                           onClick={() => handleDeleteClose(c._id)}
-                          className="text-ios-red text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold"
+                          className="text-ios-red text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold"
                         >
                           Eliminar
                         </button>
