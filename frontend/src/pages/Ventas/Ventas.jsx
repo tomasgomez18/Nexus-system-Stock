@@ -717,7 +717,7 @@ const Ventas = () => {
                             {esAdmin && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDelete(s._id); }}
-                                className="text-ios-red hover:text-ios-red/80 text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold"
+                                className="text-ios-red hover:text-ios-red dark:hover:text-ios-red/80 text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold"
                               >
                                 Eliminar
                               </button>
@@ -734,26 +734,26 @@ const Ventas = () => {
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setReturnIsCambio(false); setReturnSale(s); }}
                                       disabled={s.estado === 'devuelta'}
-                                      className="text-ios-red hover:text-ios-red/80 text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
+                                      className="text-ios-red hover:text-ios-red dark:hover:text-ios-red/80 text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
                                     >
                                       Devolver
                                     </button>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setReturnIsCambio(true); setReturnSale(s); }}
                                       disabled={s.estado === 'devuelta'}
-                                      className="text-ios-tint hover:text-ios-tint/80 text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
+                                      className="text-ios-tint hover:text-ios-tint dark:hover:text-ios-tint/80 text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
                                     >
                                       Cambiar
                                     </button>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setTicketModal(s); }}
-                                      className="text-ios-tint hover:text-ios-tint/80 text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
+                                      className="text-ios-tint hover:text-ios-tint dark:hover:text-ios-tint/80 text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold"
                                     >
                                       Ver ticket
                                     </button>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); imprimirTicket(s); }}
-                                      className="text-ios-tint hover:text-ios-tint/80 text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
+                                      className="text-ios-tint hover:text-ios-tint dark:hover:text-ios-tint/80 text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold"
                                     >
                                       Imprimir ticket
                                     </button>
@@ -841,14 +841,14 @@ const Ventas = () => {
                         {esAdmin && (
                           <button
                             onClick={() => handleDelete(s._id)}
-                            className="text-ios-red text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold"
+                            className="text-ios-red text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold"
                           >
                             Eliminar
                           </button>
                         )}
                         <button
                           onClick={() => setExpandedId(isExpanded ? null : s._id)}
-                          className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
+                          className="text-ios-tint text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold"
                         >
                           {isExpanded ? 'Ocultar' : 'Ver detalle'}
                         </button>
@@ -860,26 +860,26 @@ const Ventas = () => {
                           <button
                             onClick={() => { setReturnIsCambio(false); setReturnSale(s); }}
                             disabled={s.estado === 'devuelta'}
-                            className="text-ios-red text-xs border border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
+                            className="text-ios-red text-xs border border-ios-red/50 dark:border-ios-red/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-red/15 dark:hover:bg-ios-red/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
                           >
                             Devolver
                           </button>
                           <button
                             onClick={() => { setReturnIsCambio(true); setReturnSale(s); }}
                             disabled={s.estado === 'devuelta'}
-                            className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
+                            className="text-ios-tint text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold disabled:opacity-40 disabled:pointer-events-none"
                           >
                             Cambiar
                           </button>
                           <button
                             onClick={() => setTicketModal(s)}
-                            className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
+                            className="text-ios-tint text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold"
                           >
                             Ver ticket
                           </button>
                           <button
                             onClick={() => imprimirTicket(s)}
-                            className="text-ios-tint text-xs border border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/10 transition-all font-semibold"
+                            className="text-ios-tint text-xs border border-ios-tint/50 dark:border-ios-tint/30 px-2.5 py-1 rounded-ios-pill hover:bg-ios-tint/15 dark:hover:bg-ios-tint/10 transition-all font-semibold"
                           >
                             Imprimir ticket
                           </button>
