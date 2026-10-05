@@ -8,15 +8,7 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "migrar:dinero": "node scripts/migrar-dinero.js",
-    "migrar:dinero:aplicar": "node scripts/migrar-dinero.js --apply",
-    "migrar:tickets": "node scripts/migrar-tickets.js",
-    "migrar:tickets:aplicar": "node scripts/migrar-tickets.js --apply",
-    "auditoria:datos": "node scripts/auditoria-datos.js",
-    "reparar:datos": "node scripts/reparar-datos.js",
-    "reparar:datos:aplicar": "node scripts/reparar-datos.js --apply",
-    "reset:admin": "node scripts/reset-admin.js",
-    "test": "node scripts/ejecutar-tests.js"
+    "test": "node --test \"tests/**/*.test.js\""
   },
   "dependencies": {
     "@vercel/functions": "^3.9.9",
